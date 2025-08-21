@@ -5,6 +5,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def safe_string(value):
+    """Safely convert any value to ASCII-safe string for JSON serialization."""
+    if value is None:
+        return None
+    
+    try:
+        if isinstance(value, (str, unicode)):
+            return value.encode('ascii', 'replace').decode('ascii')
+        else:
+            str_value = str(value)
+            return str_value.encode('ascii', 'replace').decode('ascii')
+    except Exception:
+        return "ERROR_ENCODING"
+
+
 def normalize_string(text):
     """Safely normalize string values"""
     if text is None:

@@ -28,14 +28,14 @@ def register_routes():
         from revit_mcp.placement import register_placement_routes
         register_placement_routes(api)
 
-        from revit_mcp.door_info import register_door_routes
-        register_door_routes(api)
-
         from revit_mcp.furniture_by_room import register_furniture_by_room_routes
         register_furniture_by_room_routes(api)
 
-        from revit_mcp.room_write_parameters import register_set_room_parameter_route
-        register_set_room_parameter_route(api)
+        from revit_mcp.elements_by_level import register_elements_by_category_level_routes
+        register_elements_by_category_level_routes(api)
+
+        from revit_mcp.debug_routes import register_debug_routes
+        register_debug_routes(api)
 
         logger.info("All MCP routes registered successfully")
         
