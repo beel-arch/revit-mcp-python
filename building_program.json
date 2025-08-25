@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "source_file": "B15a_PVE BIO Fase 1.xlsx",
+    "conversion_date": "2025-01-24T13:45:00.000Z",
+    "total_rooms": 160,
+    "categories": [
+      "3 FACILITAIR",
+      "4 BURELEN", 
+      "5 MICROSCOPIE",
+      "6 MOLEC-MICRO BIO-ALGEMEEN",
+      "7 CHEMIE-FYSIOL-BIOCHEM",
+      "8 ELECTRONICA",
+      "9 STAALVOORB",
+      "10 KLIMAATKAMERS",
+      "11 VRIEZERS",
+      "12 OPSLAG"
+    ],
+    "schema_version": "1.0"
+  },
+  "rooms": [],
+  "summary": {
+    "rooms_by_category": {
+      "3 FACILITAIR": {"count": 15, "total_area_m2": 1450, "total_persons": 0},
+      "4 BURELEN": {"count": 24, "total_area_m2": 2592, "total_persons": 364},
+      "5 MICROSCOPIE": {"count": 9, "total_area_m2": 260, "total_persons": 0},
+      "6 MOLEC-MICRO BIO-ALGEMEEN": {"count": 15, "total_area_m2": 780, "total_persons": 0},
+      "7 CHEMIE-FYSIOL-BIOCHEM": {"count": 43, "total_area_m2": 2625, "total_persons": 0},
+      "8 ELECTRONICA": {"count": 4, "total_area_m2": 156, "total_persons": 0},
+      "9 STAALVOORB": {"count": 6, "total_area_m2": 280, "total_persons": 0},
+      "10 KLIMAATKAMERS": {"count": 18, "total_area_m2": 1234, "total_persons": 0},
+      "11 VRIEZERS": {"count": 6, "total_area_m2": 200, "total_persons": 0},
+      "12 OPSLAG": {"count": 20, "total_area_m2": 1226, "total_persons": 0}
+    },
+    "total_area_m2": 10403,
+    "total_persons": 364
+  }
+}

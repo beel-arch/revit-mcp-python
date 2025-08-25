@@ -1,0 +1,189 @@
+{
+  "metadata": {
+    "source_file": "B15a_PVE BIO Fase 1.xlsx",
+    "conversion_date": "2025-01-24T13:47:00Z",
+    "total_rooms": 160,
+    "categories": [
+      "3 FACILITAIR",
+      "4 BURELEN", 
+      "5 MICROSCOPIE",
+      "6 MOLEC-MICRO BIO-ALGEMEEN",
+      "7 CHEMIE-FYSIOL-BIOCHEM",
+      "8 ELECTRONICA",
+      "9 STAALVOORB",
+      "10 KLIMAATKAMERS",
+      "11 VRIEZERS",
+      "12 OPSLAG"
+    ],
+    "schema_version": "1.0"
+  },
+  "rooms": [
+    {
+      "id": "3 FACILITAIR-3.1",
+      "category": "3 FACILITAIR",
+      "code": "3.1",
+      "name": "Coffee corners",
+      "area": {
+        "unit_area_m2": 20,
+        "quantity": 3,
+        "total_area_m2": 60
+      },
+      "finishing": {
+        "level": 1,
+        "responsible": "COM"
+      },
+      "occupancy": null,
+      "program": {
+        "activities": [
+          "Koffie /thee halen",
+          "Informele gesprekken",
+          "Printer?"
+        ],
+        "equipment": [
+          "Koffie apparaat",
+          "Vaatwasser",
+          "Kast met mokken"
+        ],
+        "furniture": [
+          "gootsteen",
+          "water w/k"
+        ]
+      },
+      "technical": {
+        "connections": [
+          "electriciteit (waterkoker)"
+        ],
+        "special_requirements": [
+          "Hot/cold water supply"
+        ],
+        "location_requirements": [
+          "Specific floor requirement"
+        ]
+      }
+    },
+    {
+      "id": "3 FACILITAIR-3.2",
+      "category": "3 FACILITAIR", 
+      "code": "3.2",
+      "name": "Cafetaria",
+      "area": {
+        "unit_area_m2": 100,
+        "quantity": 1,
+        "total_area_m2": 100
+      },
+      "finishing": {
+        "level": 1,
+        "responsible": "COM"
+      },
+      "occupancy": null,
+      "program": {
+        "activities": [
+          "Koffiemoment",
+          "Lunch",
+          "Ontspanning",
+          "Receptie/feest"
+        ],
+        "equipment": [
+          "Koffie apparaat",
+          "Vaatwasser",
+          "koelkast",
+          "Microgolfovens",
+          "Keuken"
+        ],
+        "furniture": [
+          "gootsteen",
+          "water w/k",
+          "electriciteit",
+          "Tafels/stoelen"
+        ]
+      },
+      "technical": {
+        "connections": [],
+        "special_requirements": [
+          "Hot/cold water supply"
+        ],
+        "location_requirements": []
+      }
+    },
+    {
+      "id": "5 MICROSCOPIE-5.1",
+      "category": "5 MICROSCOPIE",
+      "code": "5.1", 
+      "name": "Microscopy prep",
+      "area": {
+        "unit_area_m2": 20,
+        "quantity": 1,
+        "total_area_m2": 20
+      },
+      "finishing": {
+        "level": 1,
+        "responsible": "COM"
+      },
+      "occupancy": null,
+      "program": {
+        "activities": [
+          "Soil slurry preparation"
+        ],
+        "equipment": [
+          "Filtering manifold (FISH)"
+        ],
+        "furniture": [
+          "gootsteen",
+          "water w/k"
+        ]
+      },
+      "technical": {
+        "connections": [],
+        "special_requirements": [
+          "Hot/cold water supply"
+        ],
+        "location_requirements": []
+      }
+    },
+    {
+      "id": "4 BURELEN-null",
+      "category": "4 BURELEN",
+      "code": null,
+      "name": "Secretariaat", 
+      "area": {
+        "unit_area_m2": 12,
+        "quantity": 1,
+        "total_area_m2": 12
+      },
+      "finishing": {
+        "level": 1,
+        "responsible": "ECO"
+      },
+      "occupancy": {
+        "persons_per_unit": 2,
+        "total_persons": 2
+      },
+      "program": {
+        "activities": [],
+        "equipment": [],
+        "furniture": []
+      },
+      "technical": {
+        "connections": [],
+        "special_requirements": [],
+        "location_requirements": []
+      }
+    }
+  ],
+  "summary": {
+    "rooms_by_category": {
+      "3 FACILITAIR": {"count": 15, "total_area_m2": 1450, "total_persons": 0},
+      "4 BURELEN": {"count": 24, "total_area_m2": 2592, "total_persons": 364},
+      "5 MICROSCOPIE": {"count": 9, "total_area_m2": 260, "total_persons": 0},
+      "6 MOLEC-MICRO BIO-ALGEMEEN": {"count": 15, "total_area_m2": 780, "total_persons": 0},
+      "7 CHEMIE-FYSIOL-BIOCHEM": {"count": 43, "total_area_m2": 2625, "total_persons": 0},
+      "8 ELECTRONICA": {"count": 4, "total_area_m2": 156, "total_persons": 0},
+      "9 STAALVOORB": {"count": 6, "total_area_m2": 280, "total_persons": 0},
+      "10 KLIMAATKAMERS": {"count": 18, "total_area_m2": 1234, "total_persons": 0},
+      "11 VRIEZERS": {"count": 6, "total_area_m2": 200, "total_persons": 0},
+      "12 OPSLAG": {"count": 20, "total_area_m2": 1226, "total_persons": 0}
+    },
+    "total_area_m2": 10403,
+    "total_persons": 364
+  }
+}

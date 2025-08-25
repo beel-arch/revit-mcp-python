@@ -358,3 +358,225 @@ get_room_count() → get_room_names() → get_room_full_data()
 - **Initial Symptom**: Early failures appearing as "length limits"
 - **Root Cause**: Character encoding failures during JSON serialization
 - **Final Status**: ✅ **RESOLVED** - All elements retrieved successfully with full encoding safety and intelligent Dutch/English category matching
+
+---
+
+## Type Name Extraction in IronPython - January 2025
+
+### The Problem
+When extracting element type names in IronPython 2.7, direct property access fails:
+
+```python
+# ❌ FAILS in IronPython 2.7
+type_name = element_type.Name
+# Error: "Type name extraction failed: Name"
+```
+
+### Root Cause
+**IronPython 2.7 property access limitations** - the `.Name` property on `ElementType` objects is not accessible through direct property syntax in the IronPython environment within Revit.
+
+### The Solution
+**Use Revit API parameter methods instead:**
+
+```python
+# ✅ WORKS in IronPython 2.7
+type_param = element_type.get_Parameter(DB.BuiltInParameter.SYMBOL_NAME_PARAM)
+if type_param and type_param.HasValue:
+    type_name = type_param.AsString()
+```
+
+### Key Learnings
+
+#### ✅ **Always Use Parameter Methods**
+- **Family names**: Use `family.Name` or parameter fallbacks
+- **Type names**: Use `SYMBOL_NAME_PARAM` parameter
+- **Element properties**: Use `get_Parameter()` when direct properties fail
+
+#### ✅ **IronPython Property Access Patterns**
+```python
+# Direct property (sometimes works)
+family_name = element_type.Family.Name
+
+# Parameter method (always reliable)
+type_param = element_type.get_Parameter(DB.BuiltInParameter.SYMBOL_NAME_PARAM)
+type_name = type_param.AsString() if type_param and type_param.HasValue else None
+```
+
+#### ✅ **Debugging Strategy**
+When properties fail with generic errors like "Name":
+1. **Try parameter-based approach** first
+2. **Check HasValue** before calling AsString()
+3. **Use exception handling** for each property access
+4. **Test incrementally** - don't assume property syntax works
+
+### Impact on Architecture
+This affects any code that extracts:
+- **Type names** for grouping/counting
+- **Family names** for classification  
+- **Element properties** for analysis
+- **Parameter values** for filtering
+
+**Always prefer parameter-based extraction over direct property access in IronPython environments.**
+
+---
+
+## AI Interpretation vs Code Solutions - January 2025
+
+### The Principle
+**Let the AI interpret user intent instead of solving everything in code.**
+
+### Real Example: "Search for deuren"
+
+#### ❌ **Code-Heavy Approach**
+```python
+# Try to solve everything in code
+if search_term == "deuren":
+    search_doors_category = True
+    also_search_generic_models = True
+    include_family_names_with_deur = True
+    # ... endless edge cases
+```
+
+#### ✅ **AI Interpretation Approach**
+When user asks: "zoek deuren"
+
+**AI response:**
+> I found 9 items with "deur" in the name, but they're spread across different categories:
+> - 6x Generic Models (door panels, leaves)
+> - 1x Windows (exterior wall opening)  
+> - 2x Detail Items (schemas)
+>
+> **Do you mean:**
+> 1. **All elements in "Doors" category** (actual doors per Revit)
+> 2. **Everything with "deur" in the name** (what I found now)
+> 3. **Only functional doors** regardless of category?
+
+### Key Benefits
+
+#### 🧠 **AI Handles Nuance**
+- **Context awareness**: Understands model structure inconsistencies
+- **User education**: Explains why results look unexpected  
+- **Flexible interpretation**: Adapts to different user intents
+- **Smart suggestions**: Offers alternatives based on data
+
+#### 🔧 **Simpler Code**
+- **No complex logic** for every edge case
+- **No hardcoded mappings** for ambiguous terms
+- **Focus on data extraction**, not interpretation
+- **Easier maintenance** and fewer bugs
+
+#### 👤 **Better User Experience**  
+- **Learns model structure** through AI explanations
+- **Gets clarifying questions** instead of wrong results
+- **Understands why** certain elements appear in unexpected categories
+- **Builds domain knowledge** over time
+
+### Implementation Pattern
+
+#### **1. Extract Raw Data**
+```python
+# Simple, focused code
+results = search_by_text_match(search_term)
+return raw_results_with_categories
+```
+
+#### **2. AI Interprets Results**
+```
+User: "Find all doors"
+AI: Analyzes results + asks clarifying questions + explains context
+```
+
+#### **3. Follow-up with Precision**
+```
+User: "Yes, I want category Doors only"
+AI: Uses category filter for precise results
+```
+
+### When to Use Each Approach
+
+#### ✅ **Use AI Interpretation for:**
+- **Ambiguous user requests** ("doors", "furniture", "windows")
+- **Model structure inconsistencies** (doors in Generic Models)
+- **Educational moments** (explaining why results look strange)
+- **Complex filtering needs** (multiple criteria)
+
+#### ✅ **Use Code Solutions for:**
+- **Technical API limitations** (encoding, property access)
+- **Performance optimizations** (focused queries)
+- **Data extraction mechanics** (parameter retrieval)
+- **Clear, unambiguous operations** (get all levels)
+
+### The Balance
+**Code handles the "how" (extract data efficiently)**  
+**AI handles the "what" (interpret user intent)**
+
+This creates a much more robust and maintainable system than trying to solve interpretation problems in code.
+
+---
+
+## Furniture Counting Ambiguity - January 2025
+
+### The Problem: Composite vs Individual Elements
+When users ask "count all chairs", furniture models can create counting ambiguity:
+
+**Example Query**: "Tel alle stoelen per bouwlaag"
+
+**Data Found**:
+- 376x BEEL_80_FU_UN_Stoel (individual chairs)
+- 150x "Tafel met stoelen - 160x80 - 1 stoel" (table+chair combos)
+
+### ❌ **Wrong Approach (Double Counting)**
+```
+Total chairs: 376 + 150 = 526 chairs
+```
+**Problem**: "Tafel met stoelen" families contain integrated chairs - counting both the combo AND individual chairs double-counts.
+
+### ✅ **Correct AI Response Pattern**
+**When encountering mixed furniture types, always ask clarifying questions:**
+
+> I found chairs in your model, but there's a mix:
+> - **376 individual chairs** (loose chairs)
+> - **150 table+chair combinations** (integrated furniture)
+>
+> **Do you want me to count:**
+> 1. **Only loose/individual chairs** (376 chairs)
+> 2. **All seating** including table combinations (526 total seats)
+> 3. **Something else?**
+
+### Key Patterns to Watch For
+
+#### **Composite Furniture Families**
+- "Tafel met stoelen" (table with chairs)
+- "Workstation" (desk + chair + storage)
+- "Lounge set" (sofa + coffee table)
+- "Kitchen island" (island + stools)
+
+#### **Individual vs Integrated**
+- **Individual**: "BEEL_80_FU_UN_Stoel" → Count as chairs
+- **Integrated**: "Tafel met 4 stoelen" → Ask user intent
+
+### Implementation Rule
+
+#### **Always Ask When Mixed Types Found**
+```python
+# Detection logic (conceptual)
+if (found_individual_items AND found_composite_items):
+    ai_should_ask_clarification = True
+    explain_counting_options()
+```
+
+#### **Examples Requiring Clarification**
+- **"Count chairs"** → Individual vs. total seating?
+- **"Count tables"** → Individual vs. table surfaces in combos?
+- **"Count workstations"** → Dedicated vs. desk+chair combos?
+
+### Benefits
+- **Prevents double counting** errors
+- **Educates users** about model structure  
+- **Gets precise intent** before calculation
+- **Shows professionalism** in data interpretation
+
+### Anti-Pattern
+❌ **Don't assume user intent** with composite furniture
+❌ **Don't silently exclude** composite elements
+❌ **Don't double-count** without explanation
