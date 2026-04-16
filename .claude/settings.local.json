@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Revit-Connector__get_revit_status",
+      "mcp__Revit-Connector__get_revit_model_info",
+      "mcp__Revit-Connector__get_areas_by_scheme",
+      "Read(//mnt/c/Users/frederik.van.nespen/OneDrive - SBA/Documenten/GitHub/revit-mcp-python/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "Bash(python *)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "Revit-Connector"
+  ]
+}

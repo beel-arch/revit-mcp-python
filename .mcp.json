@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "Revit-Connector": {
+      "command": "uv",
+      "args": [
+        "run", "--with", "mcp[cli]", "mcp", "run",
+        "C:/Users/frederik.van.nespen/OneDrive - SBA/Documenten/GitHub/revit-mcp-python/main.py"
+      ]
+    }
+  }
+}

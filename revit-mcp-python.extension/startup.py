@@ -37,6 +37,12 @@ def register_routes():
         from revit_mcp.search_with_levels import register_search_with_levels_routes
         register_search_with_levels_routes(api)
 
+        from revit_mcp.elements_by_category import register_element_routes
+        register_element_routes(api)
+
+        from revit_mcp.areas import register_areas_routes
+        register_areas_routes(api)
+
         logger.info("All MCP routes registered successfully")
         
     except Exception as e:
