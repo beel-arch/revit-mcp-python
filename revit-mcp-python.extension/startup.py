@@ -43,6 +43,9 @@ def register_routes():
         from revit_mcp.areas import register_areas_routes
         register_areas_routes(api)
 
+        from revit_mcp.rooms import register_rooms_routes
+        register_rooms_routes(api)
+
         logger.info("All MCP routes registered successfully")
         
     except Exception as e:

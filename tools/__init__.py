@@ -11,6 +11,7 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     from .furniture_tools import register_furniture_by_room_tools
     from .element_tools import register_element_tools
     from .area_tools import register_area_tools
+    from .room_checklist_tool import register_room_checklist_tools
     # Register tools from each module
     register_status_tools(mcp_server, revit_get_func)
     register_view_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func)
@@ -19,3 +20,4 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     register_furniture_by_room_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func)
     register_element_tools(mcp_server, revit_get_func)
     register_area_tools(mcp_server, revit_get_func)
+    register_room_checklist_tools(mcp_server, revit_get_func)

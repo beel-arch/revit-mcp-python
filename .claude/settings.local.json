@@ -7,7 +7,14 @@
       "Read(//mnt/c/Users/frederik.van.nespen/OneDrive - SBA/Documenten/GitHub/revit-mcp-python/**)",
       "Bash(python3 -c ' *)",
       "Bash(python3 *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "mcp__Revit-Connector__get_elements_by_category",
+      "mcp__Revit-Connector__search_elements",
+      "Bash(curl *)",
+      "mcp__Revit-Connector__get_element_parameters",
+      "mcp__Revit-Connector__compare_rooms_with_checklist",
+      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/Rooms.pulldown/**)",
+      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/**)"
     ]
   },
   "enabledMcpjsonServers": [
