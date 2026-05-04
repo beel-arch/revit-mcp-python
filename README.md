@@ -20,6 +20,7 @@ LLM Client  <--MCP (stdio)-->  MCP Server (main.py)  <--HTTP-->  pyRevit Routes 
 | `get_revit_status` | Check if Revit API is active and responding |
 | `get_revit_model_info` | Model title, path, element counts |
 | `list_levels` | All levels with elevations |
+| `get_model_structure` | Lightweight discovery — apartment numbers, building segments, room names, area schemes |
 
 ### Views & Images
 | Tool | Description |
@@ -35,7 +36,20 @@ LLM Client  <--MCP (stdio)-->  MCP Server (main.py)  <--HTTP-->  pyRevit Routes 
 | `list_family_categories` | All family categories in the model |
 | `list_families` | Available family types (with text filter and limit) |
 | `place_family` | Place a family instance at x,y,z with rotation and properties |
-| `create_point_based_element` | Create point-based elements (doors, windows, furniture) |
+| `get_furniture_by_room` | Furniture inventory per room (supports `room_name_filter`) |
+| `get_elements_by_category` | Raw element list by Revit category |
+
+### Compliance & Analysis
+| Tool | Description |
+|------|-------------|
+| `compare_rooms_with_checklist` | Codex Wonen / VMSW area compliance per apartment (supports `apartment_filter`, `room_type_filter`) |
+| `check_window_area_compliance` | Belgian daylight norm — window/floor area ratio (supports `apartment_filter`) |
+| `get_areas_by_scheme` | Area totals for a specific scheme (WO, BVO, GBO, …) |
+
+### Visualisation
+| Tool | Description |
+|------|-------------|
+| `override_element_color` | Override element colour in the active view |
 
 ## Setup
 
@@ -101,25 +115,41 @@ mcp dev main.py
 
 ```
 revit-mcp-python/
-├── main.py                          # MCP server - HTTP bridge to Revit
+├── main.py                          # MCP server — HTTP bridge to Revit
 ├── tools/                           # MCP tool definitions
 │   ├── __init__.py                  # Central tool registration
-│   ├── status_tools.py              # Status & connectivity
-│   ├── model_tools.py               # Model info & levels
-│   ├── view_tools.py                # View export & images
-│   ├── family_tools.py              # Family listing & placement
-│   └── furniture_tools.py           # Furniture-specific tools
+│   ├── status_tools.py
+│   ├── model_tools.py
+│   ├── model_structure_tool.py      # get_model_structure (discovery)
+│   ├── view_tools.py
+│   ├── family_tools.py
+│   ├── furniture_tools.py
+│   ├── element_tools.py
+│   ├── area_tools.py
+│   ├── room_checklist_tool.py       # Codex Wonen compliance
+│   ├── window_area_tool.py          # Daylight norm compliance
+│   └── tag_override_tool.py
 ├── revit-mcp-python.extension/      # pyRevit extension (runs inside Revit)
 │   ├── startup.py                   # Route registration entry point
 │   └── revit_mcp/                   # Route endpoint modules
+│       ├── utils.py                 # IronPython encoding & safety helpers
 │       ├── status.py
 │       ├── model_info.py
+│       ├── model_structure.py
 │       ├── views.py
 │       ├── placement.py
-│       └── utils.py                 # IronPython encoding & safety helpers
-├── LLM.txt                         # Context document for LLM-assisted development
-├── LESSONS_LEARNED.md               # Gotchas and solutions
-└── TOOL_USAGE_GUIDE.md              # Detailed tool usage reference
+│       ├── rooms.py
+│       ├── elements_by_category.py
+│       ├── plumbing_by_room.py
+│       └── tag_overrides.py
+├── revit-query/                     # Anthropic skill for Claude Desktop / Code
+│   ├── SKILL.md
+│   └── references/
+│       ├── tool-reference.md
+│       └── codex-wonen-rules.md
+├── CLAUDE.md                        # Per-session rules for Claude
+├── HOE_WERKT_HET.md                 # System overview (Dutch)
+└── LLM.txt                          # pyRevit Routes API reference & code templates
 ```
 
 ## Adding New Tools
@@ -153,15 +183,15 @@ def register_your_tools(mcp, revit_get, revit_post, revit_image=None):
 - Add `register_your_routes(api)` in `startup.py`
 - Add `register_your_tools(...)` in `tools/__init__.py`
 
-## Key Lessons Learned
+## Key Development Rules
 
 - **Encoding**: IronPython 2.7 chokes on non-ASCII characters (common in Belgian/Dutch models). Always use `safe_string()` from `utils.py` on all Revit string data.
 - **No f-strings**: The pyRevit extension runs in IronPython 2.7. Use `.format()` only.
-- **Property access**: Use `element.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM)` instead of `element.Name` - direct property access often fails in IronPython.
-- **Return placement**: Make sure `return` statements are outside `for` loops (easy mistake that returns only the first item).
-- **Dutch fuzzy matching**: Category resolution supports Dutch synonyms via `revit_nl_synonyms.json` with Levenshtein distance matching.
+- **Property access**: Use `element.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM)` instead of `element.Name` — direct property access often fails in IronPython.
+- **Return placement**: Return statements must be outside `for` loops — a common mistake that silently returns only the first item.
+- **Route reload**: After changing route code, do a full pyRevit reload inside Revit (pyRevit tab → Reload). `/mcp` only reconnects the MCP client.
 
-See `LESSONS_LEARNED.md` for the full write-up.
+See `CLAUDE.md` for the full rules list and `LLM.txt` for code templates.
 
 ## Credits
 
