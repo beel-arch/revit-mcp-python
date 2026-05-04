@@ -46,6 +46,15 @@ def register_routes():
         from revit_mcp.rooms import register_rooms_routes
         register_rooms_routes(api)
 
+        from revit_mcp.tag_overrides import register_tag_override_routes
+        register_tag_override_routes(api)
+
+        from revit_mcp.plumbing_by_room import register_plumbing_by_room_routes
+        register_plumbing_by_room_routes(api)
+
+        from revit_mcp.model_structure import register_model_structure_routes
+        register_model_structure_routes(api)
+
         logger.info("All MCP routes registered successfully")
         
     except Exception as e:

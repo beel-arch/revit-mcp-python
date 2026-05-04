@@ -3,22 +3,36 @@ from typing import Union
 
 def register_furniture_by_room_tools(mcp, revit_get, revit_post, revit_image=None):
     @mcp.tool()
-    async def get_furniture_by_room(ctx: Context = None) -> Union[dict, list, str]:
-        """Get furniture inventory organized by room with family, type, and mark information."""
+    async def get_furniture_by_room(ctx: Context = None, room_name_filter: str = "") -> Union[dict, list, str]:
+        """
+        Get furniture inventory organized by room with family, type, and mark information.
+
+        Parameters:
+          room_name_filter: Optional substring to limit results to rooms whose name contains
+                            this string (case-insensitive, e.g. "badkamer", "slaap").
+                            Leave empty to return all rooms.
+                            Call get_model_structure first to see available room name variants.
+        """
         response = await revit_get("/furniture/byroom/", ctx)
-        
+
         # Handle string error responses
         if isinstance(response, str):
             return response
-            
+
+        f = room_name_filter.strip().lower() if room_name_filter else ""
+
         # Handle list responses (room data)
         if isinstance(response, list):
-            result = [f"🛋️ FURNITURE BY ROOM ({len(response)} rooms)"]
+            rooms = response
+            if f:
+                rooms = [r for r in rooms if f in (r.get("RoomName") or "").lower()]
+            result = ["FURNITURE BY ROOM ({} rooms{})".format(
+                len(rooms), " – filter: '{}'".format(room_name_filter) if f else "")]
             result.append("")
-            
+
             total_furniture = 0
-            
-            for room_data in response:
+
+            for room_data in rooms:
                 room_number = room_data.get('RoomNumber', '')
                 room_name = room_data.get('RoomName', '')
                 furniture_list = room_data.get('Furniture', [])

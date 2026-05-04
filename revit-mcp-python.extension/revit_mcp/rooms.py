@@ -80,46 +80,48 @@ def register_rooms_routes(api):
 
             results = []
             for room in collector:
-                # Skip unplaced / zero-area rooms
                 try:
-                    area_m2 = round(room.Area * 0.092903, 2)
-                except Exception:
-                    area_m2 = None
-                if not area_m2:
-                    continue
+                    # Skip unplaced / zero-area rooms
+                    try:
+                        area_m2 = round(room.Area * 0.092903, 2)
+                    except Exception:
+                        area_m2 = None
+                    if not area_m2:
+                        continue
 
-                try:
-                    name = room.get_Parameter(DB.BuiltInParameter.ROOM_NAME).AsString() or ""
-                except Exception:
-                    name = ""
+                    try:
+                        name = room.get_Parameter(DB.BuiltInParameter.ROOM_NAME).AsString() or ""
+                    except Exception:
+                        name = ""
 
-                try:
-                    number = room.get_Parameter(DB.BuiltInParameter.ROOM_NUMBER).AsString() or ""
-                except Exception:
-                    number = ""
+                    try:
+                        number = room.get_Parameter(DB.BuiltInParameter.ROOM_NUMBER).AsString() or ""
+                    except Exception:
+                        number = ""
 
-                try:
-                    level_name = room.Level.Name if room.Level else ""
-                except Exception:
-                    level_name = ""
+                    try:
+                        level_name = room.Level.Name if room.Level else ""
+                    except Exception:
+                        level_name = ""
 
-                # Custom parameter linking room to its WO apartment
-                appartement_nr = None
-                try:
-                    p = room.LookupParameter("BEEL_C_TX_AppartementNummer")
-                    if p and p.HasValue:
-                        appartement_nr = p.AsString()
+                    appartement_nr = None
+                    try:
+                        p = room.LookupParameter("BEEL_C_TX_AppartementNummer")
+                        if p and p.HasValue:
+                            appartement_nr = p.AsString()
+                    except Exception:
+                        pass
+
+                    results.append({
+                        "id": _elem_id_int(room.Id),
+                        "name": name,
+                        "number": number,
+                        "area_m2": area_m2,
+                        "level": level_name,
+                        "appartement_nr": appartement_nr,
+                    })
                 except Exception:
                     pass
-
-                results.append({
-                    "id": _elem_id_int(room.Id),
-                    "name": name,
-                    "number": number,
-                    "area_m2": area_m2,
-                    "level": level_name,
-                    "appartement_nr": appartement_nr,
-                })
 
             results.sort(key=lambda x: (x["appartement_nr"] or "", x["name"]))
 
@@ -129,5 +131,6 @@ def register_rooms_routes(api):
             })
 
         except Exception as e:
-            logger.error("Error in get_all_rooms: {}".format(str(e)))
-            return routes.make_response(data={"error": str(e)}, status=500)
+            msg = "{}: {}".format(type(e).__name__, str(e))
+            logger.error("Error in get_all_rooms: {}".format(msg))
+            return routes.make_response(data={"error": msg}, status=500)

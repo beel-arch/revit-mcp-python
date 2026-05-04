@@ -35,6 +35,11 @@ RULES = {
     ),
     "badkamer": (
         "Badkamer (zonder toilet)",
+        lambda p, k: 2.0 + 0.5 * p,
+        "2 + 0.5 × personen",
+    ),
+    "badkamer_met_toilet": (
+        "Badkamer (met toilet)",
         lambda p, k: 3.0 + 0.5 * p,
         "3 + 0.5 × personen",
     ),
@@ -73,7 +78,7 @@ def _classify_room(name):
     return None
 
 
-def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
+def _check_rooms_for_apartment(apt_nr, rooms, wo_area, rooms_with_toilet=None):
     """
     Compare the rooms for one apartment against Codex Wonen minimums.
 
@@ -82,23 +87,20 @@ def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
     """
     persons = wo_area.get("aantal_personen") or 0
     bedrooms = wo_area.get("aantal_slaapkamers") or 0
+    if rooms_with_toilet is None:
+        rooms_with_toilet = set()
 
-    # Count how many kids' bedrooms we have (non-parent)
-    # If (persons - 2) > (bedrooms - 1) some kids share → 12 m²
-    parent_kids = max(0, persons - 2)
-    kids_rooms = max(0, bedrooms - 1)
-    shared_rooms = max(0, parent_kids - kids_rooms)  # rooms that hold 2 kids
-
-    kids_room_count = 0
     results = []
 
     for room in rooms:
         name = room["name"]
         area = room["area_m2"] or 0.0
+        room_id = room.get("id")
         rule_key = _classify_room(name)
 
         if rule_key is None:
             results.append({
+                "room_id": room_id,
                 "room_name": name,
                 "area_m2": area,
                 "rule": "—",
@@ -111,6 +113,7 @@ def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
 
         if rule_key == "toilet":
             results.append({
+                "room_id": room_id,
                 "room_name": name,
                 "area_m2": area,
                 "rule": "Toilet",
@@ -122,11 +125,13 @@ def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
             })
             continue
 
-        # Refine kids bedroom: could be shared
-        if rule_key == "slaapkamer_kind":
-            kids_room_count += 1
-            if shared_rooms > 0 and kids_room_count <= shared_rooms:
-                rule_key = "slaapkamer_kind_gedeeld"
+        # Refine kids bedroom: "2p" in name means shared by 2 children
+        if rule_key == "slaapkamer_kind" and "2p" in name.lower():
+            rule_key = "slaapkamer_kind_gedeeld"
+
+        # Upgrade badkamer to met-toilet variant when a toilet is present
+        if rule_key == "badkamer" and room_id in rooms_with_toilet:
+            rule_key = "badkamer_met_toilet"
 
         label, min_func, formula = RULES[rule_key]
         min_m2 = round(min_func(persons, bedrooms), 2)
@@ -134,6 +139,7 @@ def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
         diff = round(area - min_m2, 2)
 
         results.append({
+            "room_id": room_id,
             "room_name": name,
             "area_m2": area,
             "rule": label,
@@ -147,9 +153,17 @@ def _check_rooms_for_apartment(apt_nr, rooms, wo_area):
     return results
 
 
-def _format_report(grouped):
+def _format_report(grouped, apartment_filter="", room_type_filter=""):
     """Format comparison results as a readable text report."""
-    lines = ["# Codex Wonen – Oppervlaktecheck", ""]
+    title = "# Codex Wonen – Oppervlaktecheck"
+    filters = []
+    if apartment_filter:
+        filters.append("appartement: '{}'".format(apartment_filter))
+    if room_type_filter:
+        filters.append("ruimte: '{}'".format(room_type_filter))
+    if filters:
+        title += "  ({})".format(", ".join(filters))
+    lines = [title, ""]
 
     all_ok = True
     for apt_nr, data in sorted(grouped.items()):
@@ -169,22 +183,22 @@ def _format_report(grouped):
         lines.append("-" * 70)
 
         for r in rooms_results:
+            room_id_str = " (id:{})".format(r["room_id"]) if r.get("room_id") else ""
             if r["ok"] is None:
                 status = "⚠ onbekend"
-                lines.append("{:<30} {:>7.2f}m²  {:>8}  {:>8}  {}  {}".format(
-                    r["room_name"], r["area_m2"], "—", "—", status, r.get("note", "")))
+                lines.append("{:<30} {:>7.2f}m²  {:>8}  {:>8}  {}{}  {}".format(
+                    r["room_name"], r["area_m2"], "—", "—", status, room_id_str, r.get("note", "")))
             elif r["min_m2"] is None:
-                # e.g. toilet: no minimum
                 status = "– n.v.t."
-                lines.append("{:<30} {:>7.2f}m²  {:>8}  {:>8}  {}".format(
-                    r["room_name"], r["area_m2"], "—", "—", status))
+                lines.append("{:<30} {:>7.2f}m²  {:>8}  {:>8}  {}{}".format(
+                    r["room_name"], r["area_m2"], "—", "—", status, room_id_str))
             else:
                 status = "✓ OK" if r["ok"] else "✗ TE KLEIN"
                 if not r["ok"]:
                     all_ok = False
                 diff_str = "{:+.2f}m²".format(r["diff"])
-                lines.append("{:<30} {:>7.2f}m²  {:>7.2f}m²  {:>8}  {}  [{}]".format(
-                    r["room_name"], r["area_m2"], r["min_m2"], diff_str, status,
+                lines.append("{:<30} {:>7.2f}m²  {:>7.2f}m²  {:>8}  {}{}  [{}]".format(
+                    r["room_name"], r["area_m2"], r["min_m2"], diff_str, status, room_id_str,
                     r.get("formula", "")))
 
         lines.append("")
@@ -197,23 +211,40 @@ def _format_report(grouped):
 def register_room_checklist_tools(mcp, revit_get):
 
     @mcp.tool()
-    async def compare_rooms_with_checklist(ctx: Context) -> str:
+    async def compare_rooms_with_checklist(
+        ctx: Context,
+        apartment_filter: str = "",
+        room_type_filter: str = "",
+    ) -> str:
         """
         Vergelijk de oppervlaktes van Revit rooms met de BEEL Checklist Codex Wonen (VMSW).
+
+        Parameters:
+          apartment_filter: Optional substring to limit the check to matching apartment numbers
+                            (e.g. "1.A" for block 1.A, "Niv 2" for level 2 only).
+                            Leave empty to check all apartments.
+                            Call get_model_structure first to discover valid values.
+          room_type_filter: Optional substring to limit the report to specific room types.
+                            Matched against both the Revit room name and the rule key
+                            (e.g. "badkamer" returns only bathroom rows;
+                             "slaapkamer" returns all bedroom types).
+                            Leave empty to include all room types.
 
         Werking:
         1. Leest alle Rooms uit Revit (naam, oppervlakte, BEEL_C_TX_AppartementNummer).
         2. Leest WO-areas op (Aantal Personen, Aantal Slaapkamers).
         3. Koppelt rooms aan het juiste appartement via het appartementssnummer.
-        4. Controleert per ruimte of de oppervlakte voldoet aan de Codex Wonen minimums:
-           - Leefruimte:       18 + 2 × personen m²
-           - Keuken:           4 + 0.5 × personen m²
-           - Slaapkamer ouders: 11 m²
-           - Slaapkamer kind:  7 m² (1 kind) / 12 m² (gedeeld)
-           - Badkamer:         3 + 0.5 × personen m²
-           - Inkomzone:        1.5 m²
-           - Berging:          3 + 0.5 × personen m²
-        5. Geeft een leesbaar rapport terug met ✓ / ✗ per ruimte.
+        4. Controleert per badkamer of er een sanitair element met 'Toilet' in de familienaam aanwezig is.
+        5. Controleert per ruimte of de oppervlakte voldoet aan de Codex Wonen minimums:
+           - Leefruimte:              18 + 2 × personen m²
+           - Keuken:                  4 + 0.5 × personen m²
+           - Slaapkamer ouders:       11 m²
+           - Slaapkamer kind:         7 m² (1 kind) / 12 m² (gedeeld)
+           - Badkamer (zonder toilet): 2 + 0.5 × personen m²
+           - Badkamer (met toilet):   3 + 0.5 × personen m²
+           - Inkomzone:               1.5 m²
+           - Berging:                 3 + 0.5 × personen m²
+        6. Geeft een leesbaar rapport terug met ✓ / ✗ per ruimte.
         """
         # 1. Fetch rooms
         rooms_resp = await revit_get("/rooms/", ctx)
@@ -246,7 +277,9 @@ def register_room_checklist_tools(mcp, revit_get):
                 a.setdefault("aantal_personen", None)
             wo_areas[a["number"]] = a
 
-        # 3. Group rooms by appartement_nr
+        # 3. Group rooms by appartement_nr (apply filters if given)
+        f = apartment_filter.strip() if apartment_filter else ""
+        rt = room_type_filter.strip().lower() if room_type_filter else ""
         grouped = {}
         unlinked = []
         for room in rooms:
@@ -254,10 +287,19 @@ def register_room_checklist_tools(mcp, revit_get):
             if not apt_nr:
                 unlinked.append(room)
                 continue
+            if f and f not in apt_nr:
+                continue
+            if rt:
+                rule_key = _classify_room(room["name"]) or ""
+                if rt not in rule_key and rt not in room["name"].lower():
+                    continue
             if apt_nr not in grouped:
                 wo = wo_areas.get(apt_nr, {})
                 grouped[apt_nr] = {"wo_area": wo, "rooms": [], "results": []}
             grouped[apt_nr]["rooms"].append(room)
+
+        # Drop apartments that ended up with no rooms after filtering
+        grouped = {k: v for k, v in grouped.items() if v["rooms"]}
 
         if not grouped:
             msg = "Geen rooms hebben een BEEL_C_TX_AppartementNummer ingevuld."
@@ -266,7 +308,24 @@ def register_room_checklist_tools(mcp, revit_get):
                     ", ".join(r["name"] for r in unlinked))
             return msg
 
-        # 4. Compare each apartment
+        # 4. Identify badkamer room IDs and check which ones contain a toilet
+        badkamer_room_ids = set(
+            room["id"]
+            for data in grouped.values()
+            for room in data["rooms"]
+            if _classify_room(room["name"]) == "badkamer" and room.get("id") is not None
+        )
+
+        rooms_with_toilet = set()
+        if badkamer_room_ids:
+            plumbing_resp = await revit_get("/plumbing/byroom/", ctx)
+            if isinstance(plumbing_resp, dict) and "fixtures" in plumbing_resp:
+                for fix in plumbing_resp["fixtures"]:
+                    if fix.get("room_id") in badkamer_room_ids:
+                        if "toilet" in (fix.get("family") or "").lower():
+                            rooms_with_toilet.add(fix["room_id"])
+
+        # 5. Compare each apartment
         for apt_nr, data in grouped.items():
             wo = data["wo_area"]
             if not wo:
@@ -281,10 +340,10 @@ def register_room_checklist_tools(mcp, revit_get):
                 } for r in data["rooms"]]
             else:
                 data["results"] = _check_rooms_for_apartment(
-                    apt_nr, data["rooms"], wo)
+                    apt_nr, data["rooms"], wo, rooms_with_toilet)
 
-        # 5. Format report
-        report = _format_report(grouped)
+        # 6. Format report
+        report = _format_report(grouped, f, rt)
 
         if unlinked:
             report += "\n\n### Rooms zonder appartementslink\n"

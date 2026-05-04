@@ -12,6 +12,9 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     from .element_tools import register_element_tools
     from .area_tools import register_area_tools
     from .room_checklist_tool import register_room_checklist_tools
+    from .window_area_tool import register_window_area_tools
+    from .tag_override_tool import register_tag_override_tools
+    from .model_structure_tool import register_model_structure_tools
     # Register tools from each module
     register_status_tools(mcp_server, revit_get_func)
     register_view_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func)
@@ -21,3 +24,6 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     register_element_tools(mcp_server, revit_get_func)
     register_area_tools(mcp_server, revit_get_func)
     register_room_checklist_tools(mcp_server, revit_get_func)
+    register_window_area_tools(mcp_server, revit_get_func)
+    register_tag_override_tools(mcp_server, revit_get_func, revit_post_func)
+    register_model_structure_tools(mcp_server, revit_get_func)
