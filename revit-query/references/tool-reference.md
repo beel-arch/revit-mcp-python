@@ -23,7 +23,7 @@ Use this to populate filter values before calling any heavy tool.
 Parameters:
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `apartment_filter` | string | `""` | Substring match on apartment number. `"1."` = all of gebouw 1. `"1.A"` = block 1.A only. `"Niv 2"` = all level-2 apartments. |
+| `apartment_filter` | string | `""` | Prefix match on apartment number. `"1."` = all of gebouw 1 (1.A + 1.B). `"1.A"` = block 1.A only. `"1.A.Niv 2"` = level-2 apartments in 1.A. |
 | `room_type_filter` | string | `""` | Substring match on room name or rule key. `"badkamer"` = bathrooms only. `"slaap"` = all bedroom types. `"leef"` = living rooms. |
 
 Minimum area rules applied:

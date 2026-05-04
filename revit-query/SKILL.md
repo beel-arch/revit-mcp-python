@@ -49,7 +49,7 @@ without a filter when the user has scoped their request.
 |---|---|---|
 | Compliance check, gebouw 1 | `compare_rooms_with_checklist` | `apartment_filter="1."` |
 | Only badkamers in blok 1.A | `compare_rooms_with_checklist` | `apartment_filter="1.A"`, `room_type_filter="badkamer"` |
-| Daglicht niveau 2 | `check_window_area_compliance` | `apartment_filter="Niv 2"` |
+| Daglicht niveau 2, blok 1.A | `check_window_area_compliance` | `apartment_filter="1.A.Niv 2"` |
 | Meubels in slaapkamers | `get_furniture_by_room` | `room_name_filter="slaap"` |
 | WO areas | `get_areas_by_scheme` | `scheme_name="WO"` |
 

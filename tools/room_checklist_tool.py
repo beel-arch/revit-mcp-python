@@ -287,7 +287,7 @@ def register_room_checklist_tools(mcp, revit_get):
             if not apt_nr:
                 unlinked.append(room)
                 continue
-            if f and f not in apt_nr:
+            if f and not apt_nr.startswith(f):
                 continue
             if rt:
                 rule_key = _classify_room(room["name"]) or ""

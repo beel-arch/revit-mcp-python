@@ -205,7 +205,7 @@ def register_window_area_tools(mcp, revit_get):
 
         f = apartment_filter.strip() if apartment_filter else ""
         if f:
-            rooms_list = [r for r in rooms_list if f in (r.get("appartement_nr") or "")]
+            rooms_list = [r for r in rooms_list if (r.get("appartement_nr") or "").startswith(f)]
         if not rooms_list:
             return "Geen rooms gevonden voor filter '{}'.".format(f)
 
