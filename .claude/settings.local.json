@@ -14,7 +14,12 @@
       "mcp__Revit-Connector__get_element_parameters",
       "mcp__Revit-Connector__compare_rooms_with_checklist",
       "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/Rooms.pulldown/**)",
-      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/**)"
+      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/**)",
+      "mcp__Revit-Connector__check_window_area_compliance",
+      "mcp__Revit-Connector__get_model_structure",
+      "Bash(git restore *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   },
   "enabledMcpjsonServers": [
