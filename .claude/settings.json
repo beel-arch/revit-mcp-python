@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Revit-Connector__*",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(curl *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git restore *)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "Revit-Connector"
+  ],
+  "enableAllProjectMcpServers": true
+}
