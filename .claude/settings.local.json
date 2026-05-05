@@ -1,28 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "mcp__Revit-Connector__get_revit_status",
-      "mcp__Revit-Connector__get_revit_model_info",
-      "mcp__Revit-Connector__get_areas_by_scheme",
-      "Read(//mnt/c/Users/frederik.van.nespen/OneDrive - SBA/Documenten/GitHub/revit-mcp-python/**)",
-      "Bash(python3 -c ' *)",
-      "Bash(python3 *)",
-      "Bash(python *)",
-      "mcp__Revit-Connector__get_elements_by_category",
-      "mcp__Revit-Connector__search_elements",
-      "Bash(curl *)",
-      "mcp__Revit-Connector__get_element_parameters",
-      "mcp__Revit-Connector__compare_rooms_with_checklist",
-      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/Rooms.pulldown/**)",
-      "Read(//r/PyBEEL/PyBEEL.extension/pyBEEL.tab/FAMILY.panel/**)",
-      "mcp__Revit-Connector__check_window_area_compliance",
-      "mcp__Revit-Connector__get_model_structure",
-      "Bash(git restore *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(cat:*)"
     ]
-  },
-  "enabledMcpjsonServers": [
-    "Revit-Connector"
-  ]
+  }
 }
