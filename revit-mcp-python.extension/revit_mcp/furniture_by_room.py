@@ -1,6 +1,14 @@
 # -*- coding: UTF-8 -*-
 from pyrevit import routes, DB
 
+
+def _id_int(elem_id):
+    try:
+        return int(elem_id.IntegerValue)
+    except AttributeError:
+        return int(elem_id.Value)
+
+
 def register_furniture_by_room_routes(api):
     @api.route('/furniture/byroom/', methods=["GET"])
     def furniture_by_room(doc, request=None):
@@ -29,17 +37,18 @@ def register_furniture_by_room_routes(api):
 
             # Room key + metadata
             if r:
+                rid = _id_int(r.Id)
                 rnum = r.get_Parameter(DB.BuiltInParameter.ROOM_NUMBER).AsString() if r.LookupParameter("Number") or r.get_Parameter(DB.BuiltInParameter.ROOM_NUMBER) else ""
                 rname = r.get_Parameter(DB.BuiltInParameter.ROOM_NAME).AsString() if r.LookupParameter("Name") or r.get_Parameter(DB.BuiltInParameter.ROOM_NAME) else ""
-                key = "{} - {}".format(rnum, rname) if (rnum or rname) else "No Room"
+                key = str(rid)
             else:
-                rnum, rname, key = "", "", "No Room"
+                rid, rnum, rname, key = None, "", "", "No Room"
 
             if key not in rooms:
-                rooms[key] = {"RoomNumber": rnum, "RoomName": rname, "Furniture": []}
+                rooms[key] = {"RoomId": rid, "RoomNumber": rnum, "RoomName": rname, "Furniture": []}
 
             rooms[key]["Furniture"].append({
-                "ElementId": el.Id.IntegerValue,
+                "ElementId": _id_int(el.Id),
                 "Family": family_name,
                 "Type": type_name,
                 "Mark": mark

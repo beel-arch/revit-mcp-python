@@ -7,7 +7,8 @@ GET /areas/<scheme_name>             - list areas filtered by Area Scheme name
 
 from pyrevit import routes
 import Autodesk.Revit.DB as DB
-from . import logger
+import logging
+logger = logging.getLogger(__name__)
 
 
 def register_areas_routes(api):

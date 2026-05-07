@@ -30,7 +30,6 @@ def register_routes():
 
         from revit_mcp.furniture_by_room import register_furniture_by_room_routes
         register_furniture_by_room_routes(api)
-
         from revit_mcp.semantic_search import register_simple_search_routes
         register_simple_search_routes(api)
         
@@ -54,6 +53,9 @@ def register_routes():
 
         from revit_mcp.model_structure import register_model_structure_routes
         register_model_structure_routes(api)
+
+        from revit_mcp.doors import register_doors_routes
+        register_doors_routes(api)
 
         logger.info("All MCP routes registered successfully")
         

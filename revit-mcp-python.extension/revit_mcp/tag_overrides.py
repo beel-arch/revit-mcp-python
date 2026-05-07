@@ -7,9 +7,10 @@ POST /override_graphics    - apply (or clear) a color override on an element in 
 
 from pyrevit import routes
 import Autodesk.Revit.DB as DB
-from . import logger
+import logging
 import json
 import System
+logger = logging.getLogger(__name__)
 
 
 NAMED_COLORS = {

@@ -7,7 +7,8 @@ GET /rooms/  - list all placed rooms with name, number, area, level,
 
 from pyrevit import routes
 import Autodesk.Revit.DB as DB
-from . import logger
+import logging
+logger = logging.getLogger(__name__)
 
 
 def _elem_id_int(elem_id):

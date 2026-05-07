@@ -3,7 +3,18 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(mcp__Revit-Connector__get_revit_status)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(findstr \"48884\")",
+      "Bash(findstr \"LISTEN\")",
+      "Bash(findstr \"4888\")",
+      "Bash(findstr \"LISTENING\")",
+      "PowerShell(Get-ChildItem *)",
+      "Read(//c/Users/frederik.van.nespen/AppData/Roaming/pyRevit/Extensions\" 2>/dev/**)",
+      "Read(//c/Users/frederik.van.nespen/AppData/Roaming/pyRevit\" 2>/dev/**)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\frederik.van.nespen\\\\AppData\\\\Roaming\\\\pyRevit\" -Recurse -Filter \"routes.py\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head 5)"
     ]
   }
 }

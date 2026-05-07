@@ -24,6 +24,18 @@ Three steps, always all three:
 
 See `LLM.txt` for complete code templates.
 
+## Lean Queries
+
+Filter at the **route level** (inside Revit/IronPython), not in the tool layer.
+Route endpoints should accept filter parameters (URL path segments or POST body) and apply them before building the response array.
+This keeps the HTTP payload small and avoids transferring unused data from pyRevit to the MCP server.
+
+- Good: `GET /doors/room/badkamer` → Revit filters before returning
+- Bad: fetch all doors in the tool, then filter in Python
+
+When a single filter is most common, use URL path segments (e.g. `/doors/room/<room_name>`).
+When two filters are needed together, apply the primary one in the route and the secondary one in the tool.
+
 ## Querying the Model
 
 Use discovery-first: call `get_model_structure` before any filtered query to confirm apartment numbers, building segments, and room name spelling. The `apartment_filter` parameter uses prefix matching (e.g. `"1."` matches `1.A` and `1.B` only). See `revit-query/SKILL.md` for the full workflow.
