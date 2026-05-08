@@ -13,7 +13,7 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     from .area_tools import register_area_tools
     from .room_checklist_tool import register_room_checklist_tools
     from .window_area_tool import register_window_area_tools
-    from .tag_override_tool import register_tag_override_tools
+    from .element_override_tool import register_element_override_tools
     from .model_structure_tool import register_model_structure_tools
     from .bathroom_checklist_tool import register_bathroom_checklist_tools
     from .doors_tool import register_doors_tools
@@ -27,7 +27,7 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     register_area_tools(mcp_server, revit_get_func)
     register_room_checklist_tools(mcp_server, revit_get_func)
     register_window_area_tools(mcp_server, revit_get_func)
-    register_tag_override_tools(mcp_server, revit_get_func, revit_post_func)
+    register_element_override_tools(mcp_server, revit_get_func, revit_post_func)
     register_model_structure_tools(mcp_server, revit_get_func)
     register_bathroom_checklist_tools(mcp_server, revit_get_func)
-    register_doors_tools(mcp_server, revit_get_func)
+    register_doors_tools(mcp_server, revit_get_func, revit_post_func)

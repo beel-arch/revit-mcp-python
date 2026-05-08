@@ -88,6 +88,44 @@ def register_view_tools(mcp, revit_get, revit_post, revit_image):
         return str(response)
 
     @mcp.tool()
+    async def get_view_id_by_name(view_name: str, ctx: Context = None) -> str:
+        """
+        Return the Revit element ID for a view, looked up by exact name.
+        Use this to get the view_id needed by override_element_color.
+        """
+        response = await revit_get("/view_id/{}".format(view_name), ctx)
+        if isinstance(response, str):
+            return response
+        if isinstance(response, dict) and "error" in response:
+            return "Fout: {}".format(response["error"])
+        return "View '{}' heeft element ID: {}  (type: {})".format(
+            response.get("view_name"),
+            response.get("view_id"),
+            response.get("view_type"),
+        )
+
+    @mcp.tool()
+    async def get_views_on_sheet(ctx: Context = None) -> str:
+        """
+        Return all Revit views that are placed on at least one sheet, with their IDs.
+        Use this to discover which view_ids to use for override_element_color when the
+        user asks to highlight elements in views that are on sheets.
+        """
+        response = await revit_get("/views/on_sheet", ctx)
+        if isinstance(response, str):
+            return response
+        if isinstance(response, dict) and "error" in response:
+            return "Fout: {}".format(response["error"])
+        views = response.get("views", [])
+        if not views:
+            return "Geen views gevonden op sheets."
+        lines = ["{} views op sheets:".format(len(views)), ""]
+        for v in sorted(views, key=lambda x: x.get("view_name", "")):
+            lines.append("  {:>10}  {}  ({})".format(
+                v["view_id"], v["view_name"], v["view_type"]))
+        return "\n".join(lines)
+
+    @mcp.tool()
     async def get_current_view_elements(ctx: Context = None) -> Union[dict, str]:
         """
         Get all elements visible in the currently active view in Revit.

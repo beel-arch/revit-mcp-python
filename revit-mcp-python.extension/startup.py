@@ -45,8 +45,8 @@ def register_routes():
         from revit_mcp.rooms import register_rooms_routes
         register_rooms_routes(api)
 
-        from revit_mcp.tag_overrides import register_tag_override_routes
-        register_tag_override_routes(api)
+        from revit_mcp.element_overrides import register_element_override_routes
+        register_element_override_routes(api)
 
         from revit_mcp.plumbing_by_room import register_plumbing_by_room_routes
         register_plumbing_by_room_routes(api)

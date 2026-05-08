@@ -35,27 +35,28 @@ def _format_report(doors, room_name_filter, apartment_filter):
         lines.append("Geen deuren gevonden.")
         return "\n".join(lines)
 
-    header = "| Mark | Familie | Type | Van kamer | Naar kamer | Verdieping |"
-    sep    = "|------|---------|------|-----------|------------|------------|"
+    header = "| Element ID | Mark | Familie | Type | Van kamer | Naar kamer | Verdieping |"
+    sep    = "|------------|------|---------|------|-----------|------------|------------|"
     lines.append(header)
     lines.append(sep)
 
     for d in doors:
+        eid = d.get("element_id") or "-"
         mark = d.get("mark") or "-"
         family = d.get("family_name") or "-"
         dtype = d.get("type_name") or "-"
         from_r = _format_room(d.get("from_room"))
         to_r = _format_room(d.get("to_room"))
         level = d.get("level") or "-"
-        lines.append("| {} | {} | {} | {} | {} | {} |".format(
-            mark, family, dtype, from_r, to_r, level))
+        lines.append("| {} | {} | {} | {} | {} | {} | {} |".format(
+            eid, mark, family, dtype, from_r, to_r, level))
 
     lines.append("")
     lines.append("Totaal: {} deur(en)".format(len(doors)))
     return "\n".join(lines)
 
 
-def register_doors_tools(mcp, revit_get):
+def register_doors_tools(mcp, revit_get, revit_post):
 
     @mcp.tool()
     async def get_doors_with_rooms(
@@ -128,6 +129,139 @@ def register_doors_tools(mcp, revit_get):
             doors = [d for d in doors if matches_apt(d)]
 
         return _format_report(doors, room_name, apartment_filter)
+
+    @mcp.tool()
+    async def write_door_marks_from_room(
+        apartment_filter: str = "",
+        room_name_filter: str = "",
+        ctx: Context = None,
+    ) -> str:
+        """
+        Write door marks using apartment number + room number of the primary room.
+
+        ## Primary room selection — weight system
+
+        Every door connects two rooms. The "primary room" is the one that gives the
+        door its identity (its destination). Selection uses weights:
+
+          weight 0 — no apartment number (circulatie, gemeenschappelijk deel)
+          weight 1 — Inkom
+          weight 2 — all other rooms (Leefruimte, Badkamer, Berging, Slaapkamer, …)
+
+        Pick the room with the HIGHEST weight.
+        Tie (both weight 2) → use ToRoom as tiebreaker.
+
+        ## Mark format
+
+          "<appartement_nr>-<room_number>"   e.g. "1.A.Niv 0.12-02"
+
+        When multiple doors share the same primary room within the same apartment,
+        a letter suffix is appended: "…-02a", "…-02b", "…-02c", …
+
+        ## Parameters
+
+        - apartment_filter: prefix on apartment number (e.g. "1.A", "1.A.Niv 0.12")
+        - room_name_filter: optional room name substring to further limit scope
+        """
+        apartment_filter = apartment_filter.strip()
+        room_name_filter = room_name_filter.strip()
+
+        # Fetch doors
+        if room_name_filter:
+            endpoint = "/doors/room/{}".format(room_name_filter)
+        elif apartment_filter:
+            endpoint = "/doors/apartment/{}".format(apartment_filter)
+        else:
+            endpoint = "/doors/"
+
+        resp = await revit_get(endpoint, ctx)
+        if isinstance(resp, str):
+            return "Fout bij ophalen deuren: {}".format(resp)
+        if isinstance(resp, dict) and "error" in resp:
+            return "Fout bij ophalen deuren: {}".format(resp["error"])
+
+        doors = resp.get("doors") or []
+
+        # Secondary filter when both params given
+        if room_name_filter and apartment_filter:
+            def _matches(door):
+                for side in ("from_room", "to_room"):
+                    rd = door.get(side)
+                    if rd and (rd.get("appartement_nr") or "").startswith(apartment_filter):
+                        return True
+                return False
+            doors = [d for d in doors if _matches(d)]
+
+        # Weight function
+        def _weight(room):
+            if not room:
+                return -1
+            if not (room.get("appartement_nr") or ""):
+                return 0   # circulatie / gemeenschappelijk
+            name = (room.get("name") or "").lower()
+            if "inkom" in name:
+                return 1
+            return 2
+
+        # Pick primary room per door
+        assignments = []  # (element_id, apt_nr, room_nr)
+        for door in doors:
+            eid = door.get("element_id")
+            if not eid:
+                continue
+            fr = door.get("from_room")
+            tr = door.get("to_room")
+            wf = _weight(fr)
+            wt = _weight(tr)
+            primary = tr if wt >= wf else fr  # ToRoom wins on tie
+            if not primary:
+                continue
+            apt_nr = primary.get("appartement_nr") or ""
+            room_nr = primary.get("number") or ""
+            assignments.append((eid, apt_nr, room_nr))
+
+        # Count occurrences of (apt_nr, room_nr) to detect duplicates
+        from collections import Counter
+        key_counts = Counter((a, r) for _, a, r in assignments)
+
+        # Assign suffix where needed
+        key_seen = Counter()
+        writes = []
+        for eid, apt_nr, room_nr in assignments:
+            key = (apt_nr, room_nr)
+            base = "{}-{}".format(apt_nr, room_nr) if apt_nr else room_nr
+            if key_counts[key] > 1:
+                idx = key_seen[key]
+                suffix = chr(ord("a") + idx)
+                mark = "{}{}".format(base, suffix)
+            else:
+                mark = base
+            key_seen[key] += 1
+            writes.append({"element_id": eid, "param": "mark", "value": mark})
+
+        if not writes:
+            return "Geen deuren gevonden om te schrijven."
+
+        # Bulk write
+        write_resp = await revit_post("/element/write_params_bulk", {"writes": writes}, ctx)
+        if isinstance(write_resp, str):
+            return "Fout bij schrijven: {}".format(write_resp)
+        if isinstance(write_resp, dict) and "error" in write_resp:
+            return "Fout bij schrijven: {}".format(write_resp["error"])
+
+        written = write_resp.get("written", 0)
+        errors = write_resp.get("errors", 0)
+
+        # Preview first 10 for confirmation
+        preview = "\n".join(
+            "  element {} → mark='{}'".format(w["element_id"], w["value"])
+            for w in writes[:10]
+        )
+        if len(writes) > 10:
+            preview += "\n  ... en {} meer".format(len(writes) - 10)
+
+        return "{} deuren geschreven, {} fouten.\n\nVoorbeeld:\n{}".format(
+            written, errors, preview)
 
     @mcp.tool()
     async def debug_doors(ctx: Context) -> str:

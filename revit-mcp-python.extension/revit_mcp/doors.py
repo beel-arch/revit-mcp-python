@@ -61,8 +61,8 @@ def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
         results = []
         for door in collector:
             try:
-                from_room = door.get_FromRoom(last_phase) if last_phase else None
-                to_room = door.get_ToRoom(last_phase) if last_phase else None
+                from_room = door.FromRoom[last_phase] if last_phase else None
+                to_room = door.ToRoom[last_phase] if last_phase else None
 
                 from_room_data = _room_data(from_room)
                 to_room_data = _room_data(to_room)
@@ -158,33 +158,18 @@ def register_doors_routes(api):
             door_info = None
             if door:
                 door_info = {"element_id": _elem_id_int(door.Id)}
-                # Try get_FromRoom with each phase
+                last_phase = phases[-1] if phases else None
+                # Test indexer syntax: door.FromRoom[phase]
                 for i, phase in enumerate(phases):
                     try:
-                        fr = door.get_FromRoom(phase)
-                        tr = door.get_ToRoom(phase)
-                        door_info["phase_{}_from".format(i)] = safe_string(fr.Name) if fr else None
-                        door_info["phase_{}_to".format(i)] = safe_string(tr.Name) if tr else None
+                        fr = door.FromRoom[phase]
+                        tr = door.ToRoom[phase]
+                        fr_name = fr.get_Parameter(DB.BuiltInParameter.ROOM_NAME).AsString() if fr else None
+                        to_name = tr.get_Parameter(DB.BuiltInParameter.ROOM_NAME).AsString() if tr else None
+                        door_info["indexer_phase_{}_from".format(i)] = safe_string(fr_name) if fr_name else None
+                        door_info["indexer_phase_{}_to".format(i)] = safe_string(to_name) if to_name else None
                     except Exception as e:
-                        door_info["phase_{}_error".format(i)] = str(e)
-                # Try direct FromRoom property (no phase)
-                try:
-                    fr = door.FromRoom
-                    door_info["FromRoom_property"] = safe_string(fr.Name) if fr else None
-                except Exception as e:
-                    door_info["FromRoom_property_error"] = str(e)
-                try:
-                    tr = door.ToRoom
-                    door_info["ToRoom_property"] = safe_string(tr.Name) if tr else None
-                except Exception as e:
-                    door_info["ToRoom_property_error"] = str(e)
-                # Try Room property (like furniture)
-                try:
-                    last_phase = phases[-1] if phases else None
-                    r = door.Room[last_phase] if last_phase else None
-                    door_info["Room_indexer"] = safe_string(r.Name) if r else None
-                except Exception as e:
-                    door_info["Room_indexer_error"] = str(e)
+                        door_info["indexer_phase_{}_error".format(i)] = str(e)
 
             return routes.make_response(data={
                 "phase_count": len(phases),

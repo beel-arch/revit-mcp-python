@@ -61,11 +61,46 @@ without a filter when the user has scoped their request.
 | `compare_rooms_with_checklist` | Codex Wonen area compliance per apartment |
 | `check_window_area_compliance` | Daylight norm (window/floor ratio) |
 | `get_furniture_by_room` | Furniture inventory per room |
+| `get_doors_with_rooms` | Doors with FromRoom/ToRoom and element_id — filter by room name or apartment |
 | `get_areas_by_scheme` | Area totals by scheme |
 | `list_revit_views` | Available views and sheets |
+| `get_view_id_by_name` | Look up a view_id by exact view name (needed for overrides) |
 | `get_revit_view` | Export a view as image |
 | `list_levels` | Building levels with elevations |
 | `get_elements_by_category` | Raw element list by Revit category |
+
+### Universal write / override tools (work on any element)
+
+| Tool | Purpose |
+|---|---|
+| `override_element_color` | Highlight any element in any view — needs `element_id` + `view_id` |
+| `write_element_parameter` | Write Mark or Comments on a single element |
+| `write_element_parameters_bulk` | Write Mark or Comments on many elements in one transaction |
+
+**Pattern:** query tool → `element_id` list → AI computes values → bulk write. Element category does not matter.
+
+### Door mark workflow (example)
+
+```
+get_doors_with_rooms(apartment_filter="1.A")
+  → group by ToRoom room number
+  → 1 door per room: value = "02"
+  → N doors per room: value = "02a", "02b", ...
+  → write_element_parameters_bulk([
+        { element_id: X, param: "mark", value: "02a" },
+        { element_id: Y, param: "mark", value: "02b" },
+    ])
+```
+
+### Compliance stamp workflow (example)
+
+```
+compare_rooms_with_checklist(apartment_filter="1.")
+  → filter non-compliant rooms with their element_ids
+  → write_element_parameters_bulk([
+        { element_id: X, param: "comments", value: "te klein" },
+    ])
+```
 
 ## Rules
 

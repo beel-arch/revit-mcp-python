@@ -300,11 +300,16 @@ def register_views_routes(api):
             
             logger.info("Getting current view info")
             
+            try:
+                vid = int(current_view.Id.IntegerValue)
+            except AttributeError:
+                vid = int(current_view.Id.Value)
+
             # Get basic view information
             view_info = {
                 "view_name": get_element_name_safe(current_view),
                 "view_type": str(current_view.ViewType),
-                "view_id": current_view.Id.IntegerValue,
+                "view_id": vid,
                 "is_template": current_view.IsTemplate if hasattr(current_view, "IsTemplate") else False
             }
             
@@ -491,4 +496,72 @@ def register_views_routes(api):
                 status=500
             )
     
+    @api.route('/views/on_sheet', methods=["GET"])
+    def get_views_on_sheet(doc):
+        """Return all views that are placed on at least one sheet, with their IDs."""
+        try:
+            # Collect all view IDs that appear on any sheet
+            placed_ids = set()
+            sheets = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet).ToElements()
+            for sheet in sheets:
+                try:
+                    for vid in sheet.GetAllPlacedViews():
+                        placed_ids.add(vid)
+                except Exception:
+                    continue
+
+            results = []
+            for vid in placed_ids:
+                view = doc.GetElement(vid)
+                if view is None:
+                    continue
+                try:
+                    if getattr(view, "IsTemplate", False):
+                        continue
+                    try:
+                        int_id = int(view.Id.IntegerValue)
+                    except AttributeError:
+                        int_id = int(view.Id.Value)
+                    results.append({
+                        "view_id": int_id,
+                        "view_name": safe_string(get_element_name_safe(view)),
+                        "view_type": str(view.ViewType),
+                    })
+                except Exception:
+                    continue
+
+            return routes.make_response(data={"views": results, "count": len(results)})
+        except Exception as e:
+            logger.error("Error in get_views_on_sheet: {}".format(str(e)))
+            return routes.make_response(data={"error": str(e)}, status=500)
+
+    @api.route('/view_id/<view_name>', methods=["GET"])
+    def get_view_id_by_name(doc, view_name):
+        """Return the element ID for a view looked up by name."""
+        try:
+            try:
+                import urllib
+                view_name = urllib.unquote(view_name)
+            except Exception:
+                pass
+            all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
+            for view in all_views:
+                try:
+                    if get_element_name_safe(view) == view_name:
+                        try:
+                            vid = int(view.Id.IntegerValue)
+                        except AttributeError:
+                            vid = int(view.Id.Value)
+                        return routes.make_response(data={
+                            "view_name": view_name,
+                            "view_id": vid,
+                            "view_type": str(view.ViewType),
+                        })
+                except Exception:
+                    continue
+            return routes.make_response(
+                data={"error": "View not found: {}".format(view_name)}, status=404)
+        except Exception as e:
+            return routes.make_response(data={"error": str(e)}, status=500)
+
     logger.info("Views routes registered successfully")
