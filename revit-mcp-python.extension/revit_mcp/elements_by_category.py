@@ -11,6 +11,7 @@ from . import logger
 import sys
 import os
 import System
+import urllib
 
 # Load CategoryMapping from lib
 try:
@@ -68,6 +69,7 @@ def register_element_routes(api):
     def get_elements_by_category(doc, category_name):
         """Return all instances of a category with id, family, type and level."""
         try:
+            category_name = urllib.unquote(category_name)
             # Match category name case-insensitively
             builtin_cat = None
             matched_key = None

@@ -10,7 +10,7 @@ from mcp.server.fastmcp import Context
 
 FIXTURE_RULES = {
     "badkamer": {
-        "room_keywords": ["bad", "douche", "sanitair"],
+        "room_keywords": ["bad", "douche", "sanitair","bathroom"],
         "checks": [
             (
                 "Wastafel",
@@ -234,11 +234,13 @@ def register_bathroom_checklist_tools(mcp, revit_get):
         plumb_resp = await revit_get("/plumbing/byroom/", ctx)
         if isinstance(plumb_resp, dict) and "fixtures" in plumb_resp:
             for fix in plumb_resp["fixtures"]:
-                rnum = fix.get("room_number", "")
+                rid = fix.get("room_id")
+                if rid is None:
+                    continue
                 family = (fix.get("family") or "").lower()
                 for apt_data in grouped.values():
-                    if any(r["number"] == rnum for r in apt_data["rooms"]):
-                        apt_data["fixtures"].setdefault(rnum, []).append(family)
+                    if any(r["id"] == rid for r in apt_data["rooms"]):
+                        apt_data["fixtures"].setdefault(rid, []).append(family)
 
         # 5. Format report
         return _format_report(grouped, f, room_type)

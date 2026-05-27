@@ -28,6 +28,16 @@ def register_plumbing_by_room_routes(api):
             type_name = type_name.AsString() if type_name else ""
 
             r = el.Room[last_phase] if last_phase else None
+
+            # Fallback: Room Calculation Point not set on family → use location point
+            if r is None:
+                try:
+                    loc = el.Location
+                    if loc and hasattr(loc, 'Point'):
+                        r = doc.GetRoomAtPoint(loc.Point, last_phase) if last_phase else doc.GetRoomAtPoint(loc.Point)
+                except Exception:
+                    r = None
+
             if r:
                 room_id = _elem_id_int(r.Id)
                 try:
