@@ -14,7 +14,9 @@
       "Read(//c/Users/frederik.van.nespen/AppData/Roaming/pyRevit\" 2>/dev/**)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\frederik.van.nespen\\\\AppData\\\\Roaming\\\\pyRevit\" -Recurse -Filter \"routes.py\" -ErrorAction SilentlyContinue)",
       "Bash(Select-Object FullName)",
-      "Bash(Head 5)"
+      "Bash(Head 5)",
+      "Read(//c/Users/frede/AppData/Roaming/pyRevit/**)",
+      "Read(//c/Users/frede/AppData/Roaming/pyRevit-Master/**)"
     ]
   }
 }

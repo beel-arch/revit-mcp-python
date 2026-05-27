@@ -59,10 +59,13 @@ LLM Client  <--MCP (stdio)-->  MCP Server (main.py)  <--HTTP-->  pyRevit Routes 
 - Routes server enabled in pyRevit Settings
 
 ### 1. Install the pyRevit Extension
-1. In Revit, go to pyRevit tab > Settings
-2. Under "Custom Extensions", add the path to the `revit-mcp-python.extension/` folder
-3. Enable the Routes server in pyRevit Settings
-4. Restart Revit
+1. Clone this repository to your machine (e.g. `C:\path\to\revit-mcp-python`)
+2. In Revit, go to **pyRevit tab → Settings → Custom Extension Directories**
+3. Add the **repository root** folder (e.g. `C:\path\to\revit-mcp-python`) — pyRevit will auto-discover the `revit-mcp-python.extension` folder inside it
+4. Enable the **Routes server** in pyRevit Settings (Settings → Routes)
+5. Click **Save Settings** and do a full **pyRevit Reload** (pyRevit tab → Reload)
+
+> **Important:** If you previously used another MCP extension (e.g. `simple_revit_mcp`), remove its directory from Custom Extension Directories first. Having two extensions that register the same `revit_mcp` API causes routes from one to silently overwrite or block the other, so only the older/partial set of routes ends up active.
 
 ### 2. Verify the Connection
 Open a browser and navigate to:
