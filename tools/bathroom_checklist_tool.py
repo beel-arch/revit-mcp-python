@@ -58,7 +58,7 @@ def _detect_fixtures(families):
         "wastafel": sum(1 for f in families if "wastafel" in f),
         "spiegel":  sum(1 for f in families if "spiegel"  in f),
         "tablet":   sum(1 for f in families if "tablet"   in f),
-        "ligbad":   any("bad"    in f for f in families),
+        "ligbad":   any("ligbad" in f for f in families),
         "douche":   any("douche" in f for f in families),
     }
 
