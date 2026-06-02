@@ -28,8 +28,8 @@ def register_routes():
         from revit_mcp.placement import register_placement_routes
         register_placement_routes(api)
 
-        from revit_mcp.furniture_by_room import register_furniture_by_room_routes
-        register_furniture_by_room_routes(api)
+        from revit_mcp.furnishings_by_room import register_furnishings_by_room_routes
+        register_furnishings_by_room_routes(api)
         from revit_mcp.semantic_search import register_simple_search_routes
         register_simple_search_routes(api)
         
@@ -47,9 +47,6 @@ def register_routes():
 
         from revit_mcp.element_overrides import register_element_override_routes
         register_element_override_routes(api)
-
-        from revit_mcp.plumbing_by_room import register_plumbing_by_room_routes
-        register_plumbing_by_room_routes(api)
 
         from revit_mcp.model_structure import register_model_structure_routes
         register_model_structure_routes(api)

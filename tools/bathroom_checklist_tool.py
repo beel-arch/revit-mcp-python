@@ -217,28 +217,23 @@ def register_bathroom_checklist_tools(mcp, revit_get):
             msg += "."
             return msg
 
-        # 3. Furniture -> build fixture map
-        furn_resp = await revit_get("/furniture/byroom/", ctx)
-        if isinstance(furn_resp, list):
-            for room_data in furn_resp:
-                rid = room_data.get("RoomId")
+        # 3. Sanitair via unified furnishings route — lean: filter by category + apartment
+        cat_filter = "plumbing,plumbingeq"
+        if f:
+            plumb_url = "/furnishings/byroom/cat/{}/apt/{}".format(cat_filter, f)
+        else:
+            plumb_url = "/furnishings/byroom/cat/{}".format(cat_filter)
+        plumb_resp = await revit_get(plumb_url, ctx)
+        if isinstance(plumb_resp, dict) and "rooms" in plumb_resp:
+            for room_data in plumb_resp["rooms"]:
+                rid = room_data.get("room_id")
                 if rid is None:
                     continue
-                for item in room_data.get("Furniture", []):
-                    family = (item.get("Family") or "").lower()
+                for item in (room_data.get("items") or []):
+                    family = (item.get("family") or "").lower()
                     for apt_data in grouped.values():
                         if any(r["id"] == rid for r in apt_data["rooms"]):
                             apt_data["fixtures"].setdefault(rid, []).append(family)
-
-        # 4. Plumbing -> append to fixture map
-        plumb_resp = await revit_get("/plumbing/byroom/", ctx)
-        if isinstance(plumb_resp, dict) and "fixtures" in plumb_resp:
-            for fix in plumb_resp["fixtures"]:
-                rnum = fix.get("room_number", "")
-                family = (fix.get("family") or "").lower()
-                for apt_data in grouped.values():
-                    if any(r["number"] == rnum for r in apt_data["rooms"]):
-                        apt_data["fixtures"].setdefault(rnum, []).append(family)
 
         # 5. Format report
         return _format_report(grouped, f, room_type)

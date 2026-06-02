@@ -1,9 +1,9 @@
 ---
 name: revit-query
-description: Efficient Revit model querying via MCP. Always calls get_model_structure first to discover building segments, room names, and levels before running any targeted query. Use when user asks about specific buildings ("gebouw 1", "blok A"), room types ("badkamers", "slaapkamers"), levels ("niveau 2"), area compliance, daylight checks, or furniture. Requires Revit-Connector MCP to be connected.
+description: Efficient Revit model querying via MCP. Always calls get_model_structure first to discover building segments, room names, and levels before running any targeted query. Use when user asks about specific buildings ("gebouw 1", "blok A"), room types ("badkamers", "slaapkamers"), levels ("niveau 2"), area compliance, daylight checks, furnishings inventory, or bathroom fixture compliance. Requires Revit-Connector MCP to be connected.
 metadata:
   author: Frederik Van Nespen
-  version: 1.0.0
+  version: 1.2.0
   mcp-server: Revit-Connector
 ---
 
@@ -47,10 +47,13 @@ without a filter when the user has scoped their request.
 
 | User intent | Tool | Filter parameter(s) |
 |---|---|---|
-| Compliance check, gebouw 1 | `compare_rooms_with_checklist` | `apartment_filter="1."` |
-| Only badkamers in blok 1.A | `compare_rooms_with_checklist` | `apartment_filter="1.A"`, `room_type_filter="badkamer"` |
+| Oppervlakte-conformiteit, gebouw 1 | `compare_rooms_with_checklist` | `apartment_filter="1."` |
+| Alleen badkamers in blok 1.A | `compare_rooms_with_checklist` | `apartment_filter="1.A"`, `room_type_filter="badkamer"` |
 | Daglicht niveau 2, blok 1.A | `check_window_area_compliance` | `apartment_filter="1.A.Niv 2"` |
-| Meubels in slaapkamers | `get_furniture_by_room` | `room_name_filter="slaap"` |
+| Meubels/inventaris in slaapkamers | `get_room_furnishings` | `room_name_filter="slaap"` |
+| Keukens en kasten in appartement 1.A | `get_room_furnishings` | `apartment_filter="1.A"`, `categories="furniture,casework"` |
+| Sanitair inventaris badkamers | `get_room_furnishings` | `apartment_filter="1.A"`, `categories="plumbing,plumbingeq"` |
+| Sanitair conformiteit badkamers | `check_room_fixtures` | `apartment_filter="1."`, `room_type="badkamer"` |
 | WO areas | `get_areas_by_scheme` | `scheme_name="WO"` |
 
 ## Available Tools
@@ -58,16 +61,60 @@ without a filter when the user has scoped their request.
 | Tool | Purpose |
 |---|---|
 | `get_model_structure` | Discovery — levels, apartment segments, room names, area schemes |
-| `compare_rooms_with_checklist` | Codex Wonen area compliance per apartment |
-| `check_window_area_compliance` | Daylight norm (window/floor ratio) |
-| `get_furniture_by_room` | Furniture inventory per room |
-| `get_doors_with_rooms` | Doors with FromRoom/ToRoom and element_id — filter by room name or apartment |
-| `get_areas_by_scheme` | Area totals by scheme |
-| `list_revit_views` | Available views and sheets |
-| `get_view_id_by_name` | Look up a view_id by exact view name (needed for overrides) |
-| `get_revit_view` | Export a view as image |
-| `list_levels` | Building levels with elevations |
-| `get_elements_by_category` | Raw element list by Revit category |
+| `compare_rooms_with_checklist` | Codex Wonen **oppervlakte**-conformiteit per appartement (vloeroppervlak vs norm) |
+| `check_window_area_compliance` | Daglicht norm (raam/vloer verhouding) |
+| `get_room_furnishings` | Meubilair- en uitrusting**inventaris** per ruimte — alle categorieën, lean query met apartment + category filters. Geen compliance-check. |
+| `check_room_fixtures` | Sanitair **conformiteit** per badkamer — wastafel/spiegel/tablet/douche/ligbad tegen BEEL-regels, gegroepeerd per appartement op basis van WO-bezetting. |
+| `get_doors_with_rooms` | Deuren met FromRoom/ToRoom en element_id — filter op ruimtenaam of appartement |
+| `get_areas_by_scheme` | Oppervlakte-totalen per schema |
+| `list_revit_views` | Beschikbare views en sheets |
+| `get_view_id_by_name` | view_id opzoeken op exacte viewnaam (nodig voor overrides) |
+| `get_revit_view` | View exporteren als afbeelding |
+| `list_levels` | Bouwlagen met hoogtes |
+| `get_elements_by_category` | Ruwe elementlijst per Revit-categorie |
+
+### `get_room_furnishings` — beschikbare category-aliassen
+
+| Alias | Revit-categorie | Typische inhoud |
+|---|---|---|
+| `furniture` | Furniture | Kasten, bedden, stoelen, tafels |
+| `systems` | Furniture Systems | Systeemmeubilair, werkstations |
+| `casework` | Casework | Inbouwmeubelen, keukens, badkamermeubels |
+| `plumbing` | Plumbing Fixtures | Wastafel, douche, ligbad, toilet |
+| `plumbingeq` | Plumbing Equipment | Sanitaire toestellen |
+| `specialty` | Specialty Equipment | Keukenapparaten, postbussen, speciale uitrusting |
+| `lighting` | Lighting Fixtures | Verlichtingsarmaturen |
+| `lightingdev` | Lighting Devices | Verlichtingstoestellen |
+| `electrical` | Electrical Fixtures | Stopcontacten, schakelaars |
+| `electricaleq` | Electrical Equipment | Wasmachine, droogkast, kookfornuis, warmtepomp |
+| `mechanical` | Mechanical Equipment | Radiatoren, ventilatieunits, HVAC |
+| `firealarm` | Fire Alarm Devices | Rookmelders, noodknoppen |
+| `all` | *(alle bovenstaande)* | Standaard indien weggelaten |
+
+Multiple aliases: `categories="furniture,casework,plumbing"`
+
+### `get_room_furnishings` vs `check_room_fixtures` — wanneer welke?
+
+**Gebruik `get_room_furnishings`** als de vraag gaat over *wat* er staat:
+- "Welke meubels staan er in de slaapkamers?"
+- "Geef me een inventaris van alle badkameruitrusting."
+- "Hoeveel stopcontacten zijn er per ruimte?"
+- "Zijn er HVAC-toestellen aanwezig in het appartement?"
+
+**Gebruik `check_room_fixtures`** als de vraag gaat over *conformiteit* van sanitair:
+- "Voldoet de badkamer van appartement 1.A aan de BEEL-normen?"
+- "Heeft dit appartement een ligbad of een douche, en klopt dat?"
+- "Zijn er genoeg wastafels voor het aantal personen?"
+
+**Technisch verschil:**
+
+| | `get_room_furnishings` | `check_room_fixtures` |
+|---|---|---|
+| Revit route | `/furnishings/byroom/cat/<c>/apt/<a>` | zelfde route + `/areas/WO` + `/rooms/` |
+| Lean filters | category + apartment in Revit | category + apartment in Revit |
+| Room filter | tool-laag (substring) | via rooms-route + appartement_nr |
+| Output | Inventarislijst per ruimte | Conformiteitsrapport per appartement |
+| Compliance | Nee | Ja — slaapkamers ≥ 3 → ligbad; < 3 → douche |
 
 ### Universal write / override tools (work on any element)
 
@@ -102,6 +149,25 @@ compare_rooms_with_checklist(apartment_filter="1.")
     ])
 ```
 
+### Sanitair conformiteit workflow (example)
+
+```
+check_room_fixtures(apartment_filter="1.A", room_type="badkamer")
+  → haalt plumbing/plumbingeq op via /furnishings/byroom/cat/plumbing,plumbingeq/apt/1.A
+  → rapport per appartement met slaapkamer- en personentelling uit WO-areas
+  → per badkamer: wastafel / spiegel / tablet / douche / ligbad  OK of ONTBREEKT
+  → totaaloordeel: CONFORM of TEKORTKOMINGEN GEVONDEN
+```
+
+### Furnishings inventaris workflow (example)
+
+```
+get_room_furnishings(apartment_filter="1.A", categories="furniture,casework")
+  → roept /furnishings/byroom/cat/furniture,casework/apt/1.A aan
+  → geeft gegroepeerde lijst per ruimte terug
+  → elk item heeft element_id → kan worden gehighlight of beschreven via bulk write
+```
+
 ## Rules
 
 - **One question at a time.** Ask the most important clarifying question first.
@@ -132,3 +198,8 @@ The pyRevit extension needs a reload inside Revit: pyRevit tab → Reload.
 **Filter returns no results**
 The filter is a substring match on the apartment number field. Use
 `get_model_structure` to confirm the exact segment format before filtering.
+
+**Category not found in response**
+Some Revit categories (e.g. `plumbingeq`, `lightingdev`) may not exist in older
+Revit versions. The route silently skips unavailable categories and logs a warning.
+Use `get_room_furnishings(categories="all")` to see which categories have data.

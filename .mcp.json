@@ -3,9 +3,11 @@
     "Revit-Connector": {
       "command": "uv",
       "args": [
-        "run", "--with", "mcp[cli]", "mcp", "run",
+        "run",
+        "python",
         "main.py"
-      ]
+      ],
+      "cwd": "${workspaceFolder}"
     }
   }
 }
