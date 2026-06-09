@@ -54,6 +54,12 @@ def register_routes():
         from revit_mcp.doors import register_doors_routes
         register_doors_routes(api)
 
+        from revit_mcp.swap_family_type import register_swap_family_type_routes
+        register_swap_family_type_routes(api)
+
+        from revit_mcp.rooms_with_doors import register_rooms_with_doors_routes
+        register_rooms_with_doors_routes(api)
+
         logger.info("All MCP routes registered successfully")
         
     except Exception as e:

@@ -66,6 +66,7 @@ without a filter when the user has scoped their request.
 | `get_room_furnishings` | Meubilair- en uitrusting**inventaris** per ruimte — alle categorieën, lean query met apartment + category filters. Geen compliance-check. |
 | `check_room_fixtures` | Sanitair **conformiteit** per badkamer — wastafel/spiegel/tablet/douche/ligbad tegen BEEL-regels, gegroepeerd per appartement op basis van WO-bezetting. |
 | `get_doors_with_rooms` | Deuren met FromRoom/ToRoom en element_id — filter op ruimtenaam of appartement |
+| `get_rooms_with_doors` | Ruimtes met hun deuren (omgekeerde richting) — toont ook ruimtes zonder deur; filter op appartement |
 | `get_areas_by_scheme` | Oppervlakte-totalen per schema |
 | `list_revit_views` | Beschikbare views en sheets |
 | `get_view_id_by_name` | view_id opzoeken op exacte viewnaam (nodig voor overrides) |
@@ -123,8 +124,42 @@ Multiple aliases: `categories="furniture,casework,plumbing"`
 | `override_element_color` | Highlight any element in any view — needs `element_id` + `view_id` |
 | `write_element_parameter` | Write Mark or Comments on a single element |
 | `write_element_parameters_bulk` | Write Mark or Comments on many elements in one transaction |
+| `swap_family_type` | Change the family type of one or more elements — works for all categories |
 
 **Pattern:** query tool → `element_id` list → AI computes values → bulk write. Element category does not matter.
+
+### Swap family type workflow (example)
+
+```
+list_families(contains="BEEL_DR")
+  → pick target: family_name="BEEL_DR_Deur", type_name="900x2100"
+
+get_elements_by_category("Doors")
+  → filter on desired elements → collect element_ids
+
+swap_family_type(
+    element_ids=[123, 456, 789],
+    family_name="BEEL_DR_Deur",
+    type_name="900x2100"
+)
+  → wijzigt type via ChangeTypeId() in één transactie
+  → rapporteert hoeveel gewijzigd + eventuele fouten per element
+```
+
+The target type must be in the same category as the source elements — Revit enforces this.
+
+### Rooms with doors workflow (example)
+
+```
+get_rooms_with_doors(apartment_filter="1.A")
+  → rooms_without_doors > 0 → welke ruimtes missen een deur (direct bovenaan getoond)
+  → per ruimte met deur: family type, breedte, side (from_room/to_room)
+  → side="from_room" = deur draait weg van de ruimte
+  → side="to_room"   = deur draait de ruimte in
+```
+
+"Hebben alle ruimtes in blok 1.A een deur?" → `get_rooms_with_doors(apartment_filter="1.A")` — check `rooms_without_doors`.
+"Wat voor deur heeft de badkamer?" → `get_rooms_with_doors(apartment_filter="1.A")` → filter op ruimtenaam in de output.
 
 ### Door mark workflow (example)
 

@@ -17,6 +17,8 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     from .model_structure_tool import register_model_structure_tools
     from .bathroom_checklist_tool import register_bathroom_checklist_tools
     from .doors_tool import register_doors_tools
+    from .swap_family_type_tool import register_swap_family_type_tools
+    from .rooms_with_doors_tool import register_rooms_with_doors_tools
     # Register tools from each module
     register_status_tools(mcp_server, revit_get_func)
     register_view_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func)
@@ -31,3 +33,5 @@ def register_tools(mcp_server, revit_get_func, revit_post_func, revit_image_func
     register_model_structure_tools(mcp_server, revit_get_func)
     register_bathroom_checklist_tools(mcp_server, revit_get_func)
     register_doors_tools(mcp_server, revit_get_func, revit_post_func)
+    register_swap_family_type_tools(mcp_server, revit_post_func)
+    register_rooms_with_doors_tools(mcp_server, revit_get_func)
