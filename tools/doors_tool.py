@@ -35,8 +35,8 @@ def _format_report(doors, room_name_filter, apartment_filter):
         lines.append("Geen deuren gevonden.")
         return "\n".join(lines)
 
-    header = "| Element ID | Mark | Familie | Type | Van kamer | Naar kamer | Verdieping |"
-    sep    = "|------------|------|---------|------|-----------|------------|------------|"
+    header = "| Element ID | Mark | Familie | Type | B×H (mm) | Van kamer | Naar kamer | Verdieping |"
+    sep    = "|------------|------|---------|------|----------|-----------|------------|------------|"
     lines.append(header)
     lines.append(sep)
 
@@ -45,11 +45,14 @@ def _format_report(doors, room_name_filter, apartment_filter):
         mark = d.get("mark") or "-"
         family = d.get("family_name") or "-"
         dtype = d.get("type_name") or "-"
+        w = d.get("width_mm")
+        h = d.get("height_mm")
+        dims = "{}×{}".format(w, h) if (w and h) else "-"
         from_r = _format_room(d.get("from_room"))
         to_r = _format_room(d.get("to_room"))
         level = d.get("level") or "-"
-        lines.append("| {} | {} | {} | {} | {} | {} | {} |".format(
-            eid, mark, family, dtype, from_r, to_r, level))
+        lines.append("| {} | {} | {} | {} | {} | {} | {} | {} |".format(
+            eid, mark, family, dtype, dims, from_r, to_r, level))
 
     lines.append("")
     lines.append("Totaal: {} deur(en)".format(len(doors)))

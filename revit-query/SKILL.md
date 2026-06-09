@@ -54,7 +54,7 @@ without a filter when the user has scoped their request.
 | Keukens en kasten in appartement 1.A | `get_room_furnishings` | `apartment_filter="1.A"`, `categories="furniture,casework"` |
 | Sanitair inventaris badkamers | `get_room_furnishings` | `apartment_filter="1.A"`, `categories="plumbing,plumbingeq"` |
 | Sanitair conformiteit badkamers | `check_room_fixtures` | `apartment_filter="1."`, `room_type="badkamer"` |
-| WO areas | `get_areas_by_scheme` | `scheme_name="WO"` |
+| WO areas / appartementtype | `get_areas_by_scheme` | `scheme_name="WO"` |
 
 ## Available Tools
 
@@ -168,9 +168,30 @@ get_room_furnishings(apartment_filter="1.A", categories="furniture,casework")
   → elk item heeft element_id → kan worden gehighlight of beschreven via bulk write
 ```
 
+## Appartementtype altijd meenemen
+
+De WO-areas bevatten het appartementtype in de naam, formaat `slaapkamers/personen` (bv. `3/5`, `2/3`, `1/2`).
+Het **area number** = het appartementnummer (bv. `1.A.Niv 0.01`).
+
+**Regel:** Elke rapport, tabel of CSV over appartementen bevat altijd de kolom `Appartement_Type` (bv. `3/5`).
+Dit is essentiële context — zonder type verliest het rapport zijn waarde.
+
+Workflow om type op te halen:
+```
+get_areas_by_scheme(scheme_name="WO")
+  → voor elk appartement: area.number = appartement_nr, area.name = type (bv. "3/5")
+  → join op appartement_nr → kolom Appartement_Type
+```
+
+Het type bepaalt ook de conformiteitsregels:
+- `personen >= 5` → 2 wastafels/spiegels/tablets vereist (anders 1)
+- `slaapkamers >= 3` → ligbad verplicht (douche niet toegestaan)
+- `slaapkamers < 3` → douche verplicht (ligbad niet toegestaan)
+
 ## Rules
 
 - **One question at a time.** Ask the most important clarifying question first.
+- **"Opnieuw" = nieuwe query.** Als de gebruiker "opnieuw", "nogmaals" of "check again" zegt, altijd een nieuwe tool-call uitvoeren. Nooit eerder in de sessie verkregen data hergebruiken — het model kan gewijzigd zijn.
 - **State assumptions.** If you infer a filter value, say so before calling the tool.
 - **Prefer filtered calls.** A small report that fits in context beats a full-model
   report saved to a file.
@@ -185,6 +206,67 @@ Consult these when you need more detail — only load as needed:
   all filter options and return shapes
 - `references/codex-wonen-rules.md` — room classification keywords, toilet
   detection logic, and minimum area table with examples
+
+## Resultaten visualiseren — voorkeursstijl
+
+Bij compliance-checks en stapelchecks worden resultaten **altijd** weergegeven als een interactieve HTML-widget via `show_widget`, niet als platte tekst of markdown-tabel. Dit is de voorkeursstijl voor alle Revit-rapportages.
+
+### Stapelcheck per positie (kaartindeling)
+
+Gebruik één kaart per appartementpositie. Elke kaart bevat:
+- **Header:** positienaam (bv. `2.C.Niv ×.03`), type, personen, slaapkamers, WO-oppervlakte + badge `Identiek & conform` (groen) of afwijking (rood)
+- **Tabel:** ruimtenaam | Niv 1 | Niv 2 | Niv 3 | Min. | Identiek (✓/✗ + delta)
+- Niet-conforme cellen rood kleuren via `var(--color-text-danger)`
+
+```html
+<!-- Kaartstructuur per positie -->
+<div class="pos-card"> <!-- border 0.5px, border-radius-lg -->
+  <div class="pos-header"> <!-- bg-secondary, flex space-between -->
+    <span class="pos-title">2.C.Niv ×.03</span>
+    <span class="badge badge-ok">Identiek & conform</span>
+  </div>
+  <table> <!-- table-layout: fixed, font-size 12px -->
+    <thead>Ruimte | Niv 1 | Niv 2 | Niv 3 | Min. | Identiek</thead>
+    <tbody><!-- rijen met kleurcodering --></tbody>
+  </table>
+</div>
+```
+
+**Identiteitsdrempel:** verschil ≤ 0.015 m² geldt als identiek (afrondingsartefacten Revit).
+
+**Statusbadge logica:**
+- Alles OK → `badge-ok` "Identiek & conform"
+- Niet identiek → `badge-nok` "niet identiek"
+- Niet conform → `badge-nok` "niet conform"
+- Beide → `badge-nok` "niet identiek + niet conform"
+
+### Samenvattende metric cards (boven de kaarten)
+
+Altijd 4 metric cards tonen vóór de detailkaarten:
+- Totaal appartementen
+- Aantal posities
+- Identieke posities (groen)
+- Posities met afwijkingen (rood)
+
+### Conformiteitscheck per appartement
+
+Bij `compare_rooms_with_checklist`-resultaten: toon per appartement een kaart met ruimtetabel. Niet-conforme oppervlaktes rood, conforme groen of neutraal. Toiletten markeren als `n.v.t.` (cursief, tertiary kleur).
+
+### Kleurconventie
+
+| Situatie | CSS variable |
+|---|---|
+| Conform / identiek | `var(--color-text-success)` / `var(--color-background-success)` |
+| Niet conform / niet identiek | `var(--color-text-danger)` / `var(--color-background-danger)` |
+| N.v.t. (toilet, geen min.) | `var(--color-text-tertiary)`, italic |
+| Secundaire info (type, meta) | `var(--color-text-secondary)` |
+
+### Loading messages
+
+Gebruik nederlandstalige loading messages bij `show_widget`:
+- `"Ruimtes per positie opstapelen..."`
+- `"Conformiteit berekenen..."`
+- `"Tabellen opmaken..."`
 
 ## Common Issues
 

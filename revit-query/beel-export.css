@@ -1,0 +1,163 @@
+/* ============================================================
+   BEEL Architecten — Export Stylesheet
+   Gebruik: embed volledig in <style> bij elke standalone HTML export
+   Versie: 1.1  |  Huisstijl: Calibri (volledig)
+   ============================================================ */
+
+/* --- Reset & basis --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #ffffff;
+  padding: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* --- Typografie --- */
+h1, h2, h3, h4 {
+  font-family: 'Calibri', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  color: #156082;
+  margin-bottom: 0.5rem;
+}
+h1 { font-size: 22px; border-bottom: 2px solid #156082; padding-bottom: 8px; margin-bottom: 1.25rem; }
+h2 { font-size: 16px; margin-top: 1.5rem; }
+h3 { font-size: 13px; color: #1a1a1a; font-weight: 700; }
+p  { margin-bottom: 0.5rem; color: #1a1a1a; }
+
+/* --- Kleurpalet (BEEL huisstijl) --- */
+:root {
+  --beel-blauw:       #156082;
+  --beel-blauw-licht: #e6f1fb;
+  --beel-blauw-mid:   #b5d4f4;
+  --beel-oranje:      #E97132;
+  --beel-oranje-licht:#fdf0e8;
+  --ok-groen:         #1a7f4e;
+  --ok-groen-licht:   #e6f4ed;
+  --nok-rood:         #c0392b;
+  --nok-rood-licht:   #fdf0ef;
+  --warn-oranje:      #b85c00;
+  --warn-licht:       #fff4e5;
+  --grijs-rand:       #d0d0d0;
+  --grijs-achter:     #f5f5f5;
+  --grijs-tekst:      #666666;
+  --tekst-primair:    #1a1a1a;
+}
+
+/* --- Metric cards (samenvattingscijfers bovenaan) --- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+.metric {
+  background: var(--grijs-achter);
+  border: 0.5px solid var(--grijs-rand);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+.metric-label { font-size: 11px; color: var(--grijs-tekst); margin-bottom: 4px; font-family: 'Calibri', sans-serif; text-transform: uppercase; letter-spacing: 0.03em; }
+.metric-value { font-size: 22px; font-weight: 700; font-family: 'Calibri', sans-serif; color: var(--tekst-primair); }
+.metric-ok    .metric-value { color: var(--ok-groen); }
+.metric-nok   .metric-value { color: var(--nok-rood); }
+.metric-changed .metric-value { color: var(--warn-oranje); }
+
+/* --- Kaarten (pos-card) --- */
+.pos-card {
+  background: #ffffff;
+  border: 0.5px solid var(--grijs-rand);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+.pos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--beel-blauw-licht);
+  border-bottom: 0.5px solid var(--beel-blauw-mid);
+}
+.pos-title { font-size: 13px; font-weight: 700; font-family: 'Calibri', sans-serif; color: var(--beel-blauw); }
+.pos-meta  { font-size: 11px; color: var(--grijs-tekst); margin-left: 8px; }
+.badges    { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* --- Badges --- */
+.badge {
+  font-size: 10px;
+  font-family: 'Calibri', sans-serif;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.badge-ok      { background: var(--ok-groen-licht);   color: var(--ok-groen);    border: 0.5px solid #a8d5be; }
+.badge-nok     { background: var(--nok-rood-licht);    color: var(--nok-rood);    border: 0.5px solid #f5b8b3; }
+.badge-changed { background: var(--warn-licht);        color: var(--warn-oranje); border: 0.5px solid #fad0a0; }
+
+/* --- Tabellen --- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+th {
+  font-size: 10px;
+  font-family: 'Calibri', sans-serif;
+  font-weight: 700;
+  color: var(--grijs-tekst);
+  text-align: right;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--grijs-rand);
+  background: var(--grijs-achter);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+th:first-child { text-align: left; }
+td {
+  padding: 4px 10px;
+  text-align: right;
+  border-bottom: 0.5px solid #ebebeb;
+  color: var(--tekst-primair);
+}
+td:first-child { text-align: left; color: var(--grijs-tekst); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+
+/* --- Celklassen --- */
+.nok-cell     { color: var(--nok-rood);    font-weight: 700; }
+.ok-icon      { color: var(--ok-groen); }
+.nok-icon     { color: var(--nok-rood); }
+.nvt          { color: #aaaaaa; font-style: italic; }
+.changed-cell { color: var(--warn-oranje); font-weight: 700; }
+
+/* --- Footer --- */
+.export-footer {
+  margin-top: 2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--grijs-rand);
+  font-size: 10px;
+  color: var(--grijs-tekst);
+  font-family: 'Calibri', sans-serif;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* --- Print --- */
+@media print {
+  body { padding: 1rem; font-size: 11px; }
+  .pos-card { page-break-inside: avoid; }
+  .pos-header { background: #e6f1fb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .badge-ok  { background: var(--ok-groen-licht)  !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .badge-nok { background: var(--nok-rood-licht)   !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

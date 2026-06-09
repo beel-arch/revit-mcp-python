@@ -102,11 +102,28 @@ def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
                     family_name = ""
                     type_name = ""
 
+                # Width & Height from type parameters (internal units = feet → mm)
+                width_mm = None
+                height_mm = None
+                try:
+                    sym = doc.GetElement(door.GetTypeId())
+                    if sym:
+                        w = sym.get_Parameter(DB.BuiltInParameter.DOOR_WIDTH)
+                        if w and w.HasValue:
+                            width_mm = int(round(w.AsDouble() * 304.8))
+                        h = sym.get_Parameter(DB.BuiltInParameter.DOOR_HEIGHT)
+                        if h and h.HasValue:
+                            height_mm = int(round(h.AsDouble() * 304.8))
+                except Exception:
+                    pass
+
                 results.append({
                     "element_id": _elem_id_int(door.Id),
                     "mark": mark,
                     "family_name": family_name,
                     "type_name": type_name,
+                    "width_mm": width_mm,
+                    "height_mm": height_mm,
                     "level": level_name,
                     "from_room": from_room_data,
                     "to_room": to_room_data,
