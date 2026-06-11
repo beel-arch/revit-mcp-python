@@ -4,6 +4,8 @@ Doors route
 GET /doors/                     - all doors with FromRoom / ToRoom data
 GET /doors/room/<room_name>     - doors adjacent to rooms whose name contains room_name (case-insensitive substring)
 GET /doors/apartment/<prefix>   - doors whose FromRoom or ToRoom apartment number starts with prefix
+GET /doors/groupby/<group_param>/<prefix> - zelfde filter, maar op een willekeurige
+                                  grouping-parameter (project profile); prefix 'all' = geen filter
 """
 
 from pyrevit import routes
@@ -13,6 +15,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_GROUPING_PARAMETER = "BEEL_C_TX_AppartementNummer"
+
 
 def _elem_id_int(elem_id):
     try:
@@ -21,7 +25,7 @@ def _elem_id_int(elem_id):
         return int(elem_id.Value)
 
 
-def _room_data(room):
+def _room_data(room, group_param, is_default_param):
     if room is None:
         return None
     try:
@@ -32,23 +36,27 @@ def _room_data(room):
         number = safe_string(room.get_Parameter(DB.BuiltInParameter.ROOM_NUMBER).AsString() or "")
     except Exception:
         number = ""
-    appartement_nr = None
+    group_val = None
     try:
-        p = room.LookupParameter("BEEL_C_TX_AppartementNummer")
+        p = room.LookupParameter(group_param)
         if p and p.HasValue:
-            appartement_nr = safe_string(p.AsString())
+            group_val = safe_string(p.AsString())
     except Exception:
         pass
     return {
         "name": name,
         "number": number,
-        "appartement_nr": appartement_nr,
+        "group": group_val,
+        "appartement_nr": group_val if is_default_param else None,
         "element_id": _elem_id_int(room.Id),
     }
 
 
-def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
+def _collect_doors(doc, room_name_filter=None, apartment_filter=None, group_param=None):
     try:
+        group_param = group_param or DEFAULT_GROUPING_PARAMETER
+        is_default_param = group_param == DEFAULT_GROUPING_PARAMETER
+
         phases = list(DB.FilteredElementCollector(doc).OfClass(DB.Phase))
         last_phase = phases[-1] if phases else None
 
@@ -64,8 +72,8 @@ def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
                 from_room = door.FromRoom[last_phase] if last_phase else None
                 to_room = door.ToRoom[last_phase] if last_phase else None
 
-                from_room_data = _room_data(from_room)
-                to_room_data = _room_data(to_room)
+                from_room_data = _room_data(from_room, group_param, is_default_param)
+                to_room_data = _room_data(to_room, group_param, is_default_param)
 
                 # Lean filter: room name substring match
                 if room_name_filter:
@@ -75,10 +83,10 @@ def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
                     if rn not in from_name and rn not in to_name:
                         continue
 
-                # Lean filter: apartment prefix match on appartement_nr
+                # Lean filter: prefix match op de grouping-parameter
                 if apartment_filter:
-                    from_apt = (from_room_data["appartement_nr"] if from_room_data else "") or ""
-                    to_apt = (to_room_data["appartement_nr"] if to_room_data else "") or ""
+                    from_apt = (from_room_data["group"] if from_room_data else "") or ""
+                    to_apt = (to_room_data["group"] if to_room_data else "") or ""
                     if not from_apt.startswith(apartment_filter) and not to_apt.startswith(apartment_filter):
                         continue
 
@@ -138,6 +146,7 @@ def _collect_doors(doc, room_name_filter=None, apartment_filter=None):
             "filters": {
                 "room_name": room_name_filter or "",
                 "apartment": apartment_filter or "",
+                "group_parameter": group_param,
             },
             "doors": results,
         })
@@ -210,3 +219,10 @@ def register_doors_routes(api):
     def get_doors_by_apartment(doc, apartment_prefix):
         """Return doors whose FromRoom or ToRoom is in apartments starting with apartment_prefix."""
         return _collect_doors(doc, apartment_filter=apartment_prefix)
+
+    @api.route('/doors/groupby/<group_param>/<group_prefix>', methods=["GET"])
+    def get_doors_by_group(doc, group_param, group_prefix):
+        """Doors gefilterd op prefix van een willekeurige grouping-parameter
+        (project profile). group_prefix 'all' = geen filter."""
+        prefix = None if (group_prefix or "").lower() == "all" else group_prefix
+        return _collect_doors(doc, apartment_filter=prefix, group_param=group_param)

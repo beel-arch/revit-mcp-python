@@ -1,6 +1,10 @@
-"""MCP tool: get room furnishings inventory (all categories, lean queries)."""
+"""MCP tool: get room furnishings inventory (all categories, lean queries, profile-aware)."""
+
+from urllib.parse import quote
 
 from mcp.server.fastmcp import Context
+
+from .project_profile_tool import get_grouping, DEFAULT_GROUPING_PARAMETER
 
 
 def register_furnishings_tools(mcp, revit_get):
@@ -8,7 +12,7 @@ def register_furnishings_tools(mcp, revit_get):
     @mcp.tool()
     async def get_room_furnishings(
         ctx: Context,
-        apartment_filter: str = "",
+        unit_filter: str = "",
         room_name_filter: str = "",
         categories: str = "all",
     ) -> str:
@@ -34,26 +38,38 @@ def register_furnishings_tools(mcp, revit_get):
           all          alle bovenstaande (standaard)
 
         Parameters:
-          apartment_filter: Prefix voor appartementsnummers (bv. "1." voor blok 1, "1.A").
-                            Leeg = alle appartementen. Gefilterd in Revit (lean query).
-                            Roep eerst get_model_structure op voor geldige waarden.
-          room_name_filter: Substring match op ruimtenaam (bv. "badkamer", "slaap").
+          unit_filter:      Prefix op de grouping-parameter uit het project profile
+                            (KSS: appartementnummer "1.A"; JGC: ruimtegroep "BW";
+                            THELLO: UnitID "C1"). Leeg = alles. Gefilterd in Revit
+                            (lean query). Roep eerst get_model_structure op.
+          room_name_filter: Substring match op ruimtenaam (bv. "badkamer", "chambre").
                             Leeg = alle ruimten. Gefilterd na de route (tool-laag).
           categories:       Comma-separated aliassen. Standaard "all".
                             Gefilterd in Revit per category-collector (lean query).
         """
-        apt_f = apartment_filter.strip() if apartment_filter else ""
+        group_param, group_label, _profile = await get_grouping(revit_get, ctx)
+
+        apt_f = unit_filter.strip() if unit_filter else ""
         cat_f = categories.strip() if categories else "all"
 
-        # Build URL — push both apt and cat filters to route level (lean)
-        if cat_f and cat_f != "all" and apt_f:
-            url = "/furnishings/byroom/cat/{}/apt/{}".format(cat_f, apt_f)
-        elif apt_f:
-            url = "/furnishings/byroom/apt/{}".format(apt_f)
-        elif cat_f and cat_f != "all":
-            url = "/furnishings/byroom/cat/{}".format(cat_f)
+        # Build URL — push both unit and cat filters to route level (lean)
+        if group_param == DEFAULT_GROUPING_PARAMETER:
+            if cat_f and cat_f != "all" and apt_f:
+                url = "/furnishings/byroom/cat/{}/apt/{}".format(cat_f, quote(apt_f, safe=""))
+            elif apt_f:
+                url = "/furnishings/byroom/apt/{}".format(quote(apt_f, safe=""))
+            elif cat_f and cat_f != "all":
+                url = "/furnishings/byroom/cat/{}".format(cat_f)
+            else:
+                url = "/furnishings/byroom/"
         else:
-            url = "/furnishings/byroom/"
+            param_seg = quote(group_param, safe="")
+            prefix_seg = quote(apt_f, safe="") if apt_f else "all"
+            if cat_f and cat_f != "all":
+                url = "/furnishings/byroom/cat/{}/groupby/{}/{}".format(
+                    cat_f, param_seg, prefix_seg)
+            else:
+                url = "/furnishings/byroom/groupby/{}/{}".format(param_seg, prefix_seg)
 
         resp = await revit_get(url, ctx)
         if isinstance(resp, str):
@@ -71,7 +87,7 @@ def register_furnishings_tools(mcp, revit_get):
         if not all_rooms:
             parts = []
             if apt_f:
-                parts.append("appartement '{}'".format(apt_f))
+                parts.append("{} '{}'".format(group_label, apt_f))
             if room_f:
                 parts.append("ruimte '{}'".format(room_f))
             if cat_f != "all":
@@ -83,7 +99,7 @@ def register_furnishings_tools(mcp, revit_get):
 
         filter_parts = []
         if apt_f:
-            filter_parts.append("apt='{}'".format(apt_f))
+            filter_parts.append("{}='{}'".format(group_label, apt_f))
         if room_f:
             filter_parts.append("kamer='{}'".format(room_f))
         if cat_f != "all":
@@ -93,18 +109,19 @@ def register_furnishings_tools(mcp, revit_get):
         lines = [
             "MEUBILAIR PER RUIMTE  ({} ruimten, {} items{})".format(
                 len(all_rooms), total_items, filter_str),
+            "Grouping: '{}' ({})".format(group_param, group_label),
             "",
         ]
 
         for room in all_rooms:
             rnum = room.get("room_number") or ""
             rname = room.get("room_name") or ""
-            apt_nr = room.get("appartement_nr") or ""
+            grp = room.get("group") or room.get("appartement_nr") or ""
             items = room.get("items") or []
 
             header = "{} — {}".format(rnum, rname) if rnum and rname else (rnum or rname or "Geen ruimte")
-            if apt_nr:
-                header += "  [{}]".format(apt_nr)
+            if grp:
+                header += "  [{}]".format(grp)
             lines.append("## {}  ({} items)".format(header, len(items)))
 
             for item in items:

@@ -1,8 +1,11 @@
 # -*- coding: UTF-8 -*-
 """
 Rooms with Doors route  (Room -> Door direction)
-GET /rooms/with_doors/                      - all rooms with their doors
-GET /rooms/with_doors/apartment/<prefix>    - filtered by appartement_nr prefix
+GET /rooms/with_doors/                                - all rooms with their doors
+GET /rooms/with_doors/apartment/<prefix>              - filtered by appartement_nr prefix (KSS-default)
+GET /rooms/with_doors/groupby/<group_param>/<prefix>  - filtered op een willekeurige
+                                                        grouping-parameter (project profile);
+                                                        prefix "all" = geen filter
 """
 
 from pyrevit import routes
@@ -12,6 +15,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_GROUPING_PARAMETER = "BEEL_C_TX_AppartementNummer"
+
 
 def _elem_id_int(elem_id):
     try:
@@ -20,9 +25,9 @@ def _elem_id_int(elem_id):
         return int(elem_id.Value)
 
 
-def _get_appartement_nr(room):
+def _get_group_value(room, group_param):
     try:
-        p = room.LookupParameter("BEEL_C_TX_AppartementNummer")
+        p = room.LookupParameter(group_param)
         if p and p.HasValue:
             return safe_string(p.AsString())
     except Exception:
@@ -30,8 +35,11 @@ def _get_appartement_nr(room):
     return None
 
 
-def _collect_rooms_with_doors(doc, apartment_filter=None):
+def _collect_rooms_with_doors(doc, apartment_filter=None, group_param=None):
     try:
+        group_param = group_param or DEFAULT_GROUPING_PARAMETER
+        is_default_param = group_param == DEFAULT_GROUPING_PARAMETER
+
         # --- collect rooms ---
         room_collector = (
             DB.FilteredElementCollector(doc)
@@ -40,11 +48,11 @@ def _collect_rooms_with_doors(doc, apartment_filter=None):
             .ToElements()
         )
 
-        # Build room lookup dict and apply apartment filter
+        # Build room lookup dict and apply grouping filter
         rooms_by_id = {}
         for room in room_collector:
             try:
-                apt_nr = _get_appartement_nr(room)
+                apt_nr = _get_group_value(room, group_param)
                 if apartment_filter and not (apt_nr or "").startswith(apartment_filter):
                     continue
                 try:
@@ -75,7 +83,8 @@ def _collect_rooms_with_doors(doc, apartment_filter=None):
                     "room_id": room_id,
                     "room_name": name,
                     "room_number": number,
-                    "appartement_nr": apt_nr,
+                    "group": apt_nr,
+                    "appartement_nr": apt_nr if is_default_param else None,
                     "level": level_name,
                     "area_m2": area_m2,
                     "doors": [],
@@ -87,6 +96,7 @@ def _collect_rooms_with_doors(doc, apartment_filter=None):
             return routes.make_response(data={
                 "total_rooms": 0,
                 "rooms_without_doors": 0,
+                "group_parameter": group_param,
                 "apartment_filter": apartment_filter or "",
                 "rooms": [],
             })
@@ -164,7 +174,7 @@ def _collect_rooms_with_doors(doc, apartment_filter=None):
         # --- assemble result ---
         room_list = sorted(
             rooms_by_id.values(),
-            key=lambda r: (r["appartement_nr"] or "", r["room_name"])
+            key=lambda r: (r["group"] or "", r["room_name"])
         )
 
         for room in room_list:
@@ -175,6 +185,7 @@ def _collect_rooms_with_doors(doc, apartment_filter=None):
         return routes.make_response(data={
             "total_rooms": len(room_list),
             "rooms_without_doors": rooms_without_doors,
+            "group_parameter": group_param,
             "apartment_filter": apartment_filter or "",
             "rooms": room_list,
         })
@@ -196,5 +207,12 @@ def register_rooms_with_doors_routes(api):
     def get_rooms_with_doors_by_apartment(doc, apartment_prefix):
         """Return rooms filtered by apartment number prefix, each with their doors."""
         return _collect_rooms_with_doors(doc, apartment_filter=apartment_prefix)
+
+    @api.route('/rooms/with_doors/groupby/<group_param>/<group_prefix>', methods=["GET"])
+    def get_rooms_with_doors_by_group(doc, group_param, group_prefix):
+        """Rooms gefilterd op prefix van een willekeurige grouping-parameter
+        (uit het project profile). group_prefix 'all' = geen filter."""
+        prefix = None if (group_prefix or "").lower() == "all" else group_prefix
+        return _collect_rooms_with_doors(doc, apartment_filter=prefix, group_param=group_param)
 
     logger.info("Rooms with doors routes registered successfully")

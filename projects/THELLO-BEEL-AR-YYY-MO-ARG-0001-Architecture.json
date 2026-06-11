@@ -1,0 +1,22 @@
+{
+  "model_name": "THELLO-BEEL-AR-YYY-MO-ARG-0001-Architecture",
+  "project_name": "THELLO/ORSBEV",
+  "grouping": [
+    {"derive": {"from": "THELLO_C_TX_UnitID", "rule": "prefix"}, "label": "gebouw"},
+    {"parameter": "THELLO_C_TX_UnitID", "label": "unit"}
+  ],
+  "room_type_parameter": null,
+  "typology_parameter": "THELL0_C_TX_UnitTypologie",
+  "unit_area_parameter": "THELLO_C_AR_UnitTotalArea",
+  "occupancy": {"source": "none"},
+  "program_link": {"mode": "none"},
+  "rulesets": [],
+  "room_classification": {
+    "slaapkamer": ["chambre"],
+    "badkamer": ["salle de bain"],
+    "leefruimte": ["salon", "cuisine"],
+    "terras": ["terrasse"]
+  },
+  "family_keywords": {},
+  "notes": "Frans coliving-project (VINCI Immobilier). 366 unplaced rooms aanwezig. THELL0_C_TX_UnitTypologie bevat een nul i.p.v. een O — letterlijke parameternaam uit het model."
+}

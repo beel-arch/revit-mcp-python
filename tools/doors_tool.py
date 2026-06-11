@@ -1,6 +1,10 @@
-"""MCP tool: query doors with FromRoom / ToRoom data from the Revit model."""
+"""MCP tool: query doors with FromRoom / ToRoom data from the Revit model (profile-aware)."""
+
+from urllib.parse import quote
 
 from mcp.server.fastmcp import Context
+
+from .project_profile_tool import get_grouping, DEFAULT_GROUPING_PARAMETER
 
 
 def _format_room(room_data):
@@ -13,7 +17,25 @@ def _format_room(room_data):
     return name or number or "(geen kamer)"
 
 
-def _format_report(doors, room_name_filter, apartment_filter):
+def _room_group(room_data):
+    if not room_data:
+        return ""
+    return room_data.get("group") or room_data.get("appartement_nr") or ""
+
+
+def _doors_endpoint(room_name, unit_filter, group_param):
+    """Kies het leanste endpoint; room-filter primeert (route), unit-filter secundair."""
+    if room_name:
+        return "/doors/room/{}".format(quote(room_name, safe=""))
+    if unit_filter:
+        if group_param == DEFAULT_GROUPING_PARAMETER:
+            return "/doors/apartment/{}".format(quote(unit_filter, safe=""))
+        return "/doors/groupby/{}/{}".format(
+            quote(group_param, safe=""), quote(unit_filter, safe=""))
+    return "/doors/"
+
+
+def _format_report(doors, room_name_filter, unit_filter, group_label):
     lines = [
         "## Deuren met kamerinformatie",
         "",
@@ -25,8 +47,8 @@ def _format_report(doors, room_name_filter, apartment_filter):
     active_filters = []
     if room_name_filter:
         active_filters.append("kamer: '{}'".format(room_name_filter))
-    if apartment_filter:
-        active_filters.append("appartement: '{}'".format(apartment_filter))
+    if unit_filter:
+        active_filters.append("{}: '{}'".format(group_label, unit_filter))
     if active_filters:
         lines.append("*Filter: {}*".format(", ".join(active_filters)))
         lines.append("")
@@ -65,7 +87,7 @@ def register_doors_tools(mcp, revit_get, revit_post):
     async def get_doors_with_rooms(
         ctx: Context,
         room_name: str = "",
-        apartment_filter: str = "",
+        unit_filter: str = "",
     ) -> str:
         """
         Geeft een overzicht van alle deuren met de aangrenzende kamers (FromRoom en ToRoom).
@@ -80,36 +102,28 @@ def register_doors_tools(mcp, revit_get, revit_post):
           Voorbeeld: badkamerdeuren die naar buiten draaien = badkamer is FromRoom voor al die deuren.
 
         Parameters:
-          room_name:        Optionele substring van een kamernaam om te filteren (hoofdletterongevoelig).
-                            Geeft alleen deuren terug die grenzen aan kamers waarvan de naam dit
-                            bevat. Bv. "badkamer", "toilet", "leefruimte".
-                            Leeg = alle deuren.
-          apartment_filter: Optioneel prefix op het appartementsnummer van de aangrenzende kamer.
-                            Bv. "1." geeft deuren in appartementen 1.A, 1.B, enz.
-                            Leeg = alle appartementen.
-                            Roep eerst get_model_structure op om geldige prefixes te ontdekken.
+          room_name:   Optionele substring van een kamernaam om te filteren (hoofdletterongevoelig).
+                       Geeft alleen deuren terug die grenzen aan kamers waarvan de naam dit
+                       bevat. Bv. "badkamer", "toilet", "chambre". Leeg = alle deuren.
+          unit_filter: Optioneel prefix op de grouping-waarde van de aangrenzende kamer
+                       (project profile: KSS appartementnummer, JGC ruimtegroep, THELLO UnitID).
+                       Bv. "1." geeft deuren in appartementen 1.A, 1.B, enz.
+                       Leeg = alles. Roep eerst get_model_structure op voor geldige prefixes.
 
         Gebruik:
           - "Welke deurtypes geven toegang tot de leefruimte?"
               → room_name="leefruimte"
-          - "Welke deur zit tussen de inkom en de leefruimte?"
-              → room_name="" en redeneer op basis van FromRoom/ToRoom combinaties
           - "Draaien de badkamerdeuren naar buiten?"
               → room_name="badkamer", controleer of badkamer altijd FromRoom is (nooit ToRoom)
           - "Welke deurtypen zitten er in appartement 2.A?"
-              → apartment_filter="2.A"
+              → unit_filter="2.A"
         """
         room_name = room_name.strip()
-        apartment_filter = apartment_filter.strip()
+        unit_filter = unit_filter.strip()
 
-        # Choose the lean endpoint
-        if room_name:
-            endpoint = "/doors/room/{}".format(room_name)
-        elif apartment_filter:
-            endpoint = "/doors/apartment/{}".format(apartment_filter)
-        else:
-            endpoint = "/doors/"
+        group_param, group_label, _profile = await get_grouping(revit_get, ctx)
 
+        endpoint = _doors_endpoint(room_name, unit_filter, group_param)
         resp = await revit_get(endpoint, ctx)
 
         if isinstance(resp, str):
@@ -119,35 +133,32 @@ def register_doors_tools(mcp, revit_get, revit_post):
 
         doors = resp.get("doors") or []
 
-        # Secondary in-tool filter: apartment on room_name results (or vice versa)
-        if room_name and apartment_filter:
-            def matches_apt(door):
+        # Secondary in-tool filter: unit prefix on room_name results
+        if room_name and unit_filter:
+            def matches_unit(door):
                 for side in ("from_room", "to_room"):
-                    rd = door.get(side)
-                    if rd:
-                        apt = rd.get("appartement_nr") or ""
-                        if apt.startswith(apartment_filter):
-                            return True
+                    if _room_group(door.get(side)).startswith(unit_filter):
+                        return True
                 return False
-            doors = [d for d in doors if matches_apt(d)]
+            doors = [d for d in doors if matches_unit(d)]
 
-        return _format_report(doors, room_name, apartment_filter)
+        return _format_report(doors, room_name, unit_filter, group_label)
 
     @mcp.tool()
     async def write_door_marks_from_room(
-        apartment_filter: str = "",
+        unit_filter: str = "",
         room_name_filter: str = "",
         ctx: Context = None,
     ) -> str:
         """
-        Write door marks using apartment number + room number of the primary room.
+        Write door marks using the unit grouping value + room number of the primary room.
 
         ## Primary room selection — weight system
 
         Every door connects two rooms. The "primary room" is the one that gives the
         door its identity (its destination). Selection uses weights:
 
-          weight 0 — no apartment number (circulatie, gemeenschappelijk deel)
+          weight 0 — geen grouping-waarde (circulatie, gemeenschappelijk deel)
           weight 1 — Inkom
           weight 2 — all other rooms (Leefruimte, Badkamer, Berging, Slaapkamer, …)
 
@@ -156,27 +167,23 @@ def register_doors_tools(mcp, revit_get, revit_post):
 
         ## Mark format
 
-          "<appartement_nr>-<room_number>"   e.g. "1.A.Niv 0.12-02"
+          "<grouping-waarde>-<room_number>"   e.g. "1.A.Niv 0.12-02" (KSS) of "C104-02" (THELLO)
 
-        When multiple doors share the same primary room within the same apartment,
+        When multiple doors share the same primary room within the same unit,
         a letter suffix is appended: "…-02a", "…-02b", "…-02c", …
 
         ## Parameters
 
-        - apartment_filter: prefix on apartment number (e.g. "1.A", "1.A.Niv 0.12")
+        - unit_filter: prefix op de grouping-waarde uit het project profile
+                       (bv. "1.A", "1.A.Niv 0.12", "C1")
         - room_name_filter: optional room name substring to further limit scope
         """
-        apartment_filter = apartment_filter.strip()
+        unit_filter = unit_filter.strip()
         room_name_filter = room_name_filter.strip()
 
-        # Fetch doors
-        if room_name_filter:
-            endpoint = "/doors/room/{}".format(room_name_filter)
-        elif apartment_filter:
-            endpoint = "/doors/apartment/{}".format(apartment_filter)
-        else:
-            endpoint = "/doors/"
+        group_param, _group_label, _profile = await get_grouping(revit_get, ctx)
 
+        endpoint = _doors_endpoint(room_name_filter, unit_filter, group_param)
         resp = await revit_get(endpoint, ctx)
         if isinstance(resp, str):
             return "Fout bij ophalen deuren: {}".format(resp)
@@ -186,11 +193,10 @@ def register_doors_tools(mcp, revit_get, revit_post):
         doors = resp.get("doors") or []
 
         # Secondary filter when both params given
-        if room_name_filter and apartment_filter:
+        if room_name_filter and unit_filter:
             def _matches(door):
                 for side in ("from_room", "to_room"):
-                    rd = door.get(side)
-                    if rd and (rd.get("appartement_nr") or "").startswith(apartment_filter):
+                    if _room_group(door.get(side)).startswith(unit_filter):
                         return True
                 return False
             doors = [d for d in doors if _matches(d)]
@@ -199,7 +205,7 @@ def register_doors_tools(mcp, revit_get, revit_post):
         def _weight(room):
             if not room:
                 return -1
-            if not (room.get("appartement_nr") or ""):
+            if not _room_group(room):
                 return 0   # circulatie / gemeenschappelijk
             name = (room.get("name") or "").lower()
             if "inkom" in name:
@@ -207,7 +213,7 @@ def register_doors_tools(mcp, revit_get, revit_post):
             return 2
 
         # Pick primary room per door
-        assignments = []  # (element_id, apt_nr, room_nr)
+        assignments = []  # (element_id, group_value, room_nr)
         for door in doors:
             eid = door.get("element_id")
             if not eid:
@@ -219,20 +225,20 @@ def register_doors_tools(mcp, revit_get, revit_post):
             primary = tr if wt >= wf else fr  # ToRoom wins on tie
             if not primary:
                 continue
-            apt_nr = primary.get("appartement_nr") or ""
+            grp = _room_group(primary)
             room_nr = primary.get("number") or ""
-            assignments.append((eid, apt_nr, room_nr))
+            assignments.append((eid, grp, room_nr))
 
-        # Count occurrences of (apt_nr, room_nr) to detect duplicates
+        # Count occurrences of (group, room_nr) to detect duplicates
         from collections import Counter
         key_counts = Counter((a, r) for _, a, r in assignments)
 
         # Assign suffix where needed
         key_seen = Counter()
         writes = []
-        for eid, apt_nr, room_nr in assignments:
-            key = (apt_nr, room_nr)
-            base = "{}-{}".format(apt_nr, room_nr) if apt_nr else room_nr
+        for eid, grp, room_nr in assignments:
+            key = (grp, room_nr)
+            base = "{}-{}".format(grp, room_nr) if grp else room_nr
             if key_counts[key] > 1:
                 idx = key_seen[key]
                 suffix = chr(ord("a") + idx)

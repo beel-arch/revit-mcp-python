@@ -1,14 +1,17 @@
 """Tool for querying rooms with their associated doors (Room -> Door direction)"""
 
+from urllib.parse import quote
+
 from mcp.server.fastmcp import Context
-from typing import Union
+
+from .project_profile_tool import get_grouping, DEFAULT_GROUPING_PARAMETER
 
 
 def register_rooms_with_doors_tools(mcp, revit_get):
 
     @mcp.tool()
     async def get_rooms_with_doors(
-        apartment_filter: str = None,
+        unit_filter: str = None,
         ctx: Context = None
     ) -> str:
         """
@@ -23,13 +26,22 @@ def register_rooms_with_doors_tools(mcp, revit_get):
         from_room (door swings away from room) or to_room (door swings into room).
 
         Args:
-            apartment_filter: Optional apartment number prefix to limit results
-                              (e.g. "1.A" matches all rooms in block 1.A)
+            unit_filter: Optional prefix op de grouping-parameter uit het project
+                         profile (KSS: appartementnummer "1.A"; JGC: ruimtegroep "BW";
+                         THELLO: UnitID "C1"). Roep get_model_structure op voor
+                         geldige waarden.
         """
-        if apartment_filter:
-            endpoint = "/rooms/with_doors/apartment/{}".format(apartment_filter)
+        group_param, group_label, _profile = await get_grouping(revit_get, ctx)
+
+        if group_param == DEFAULT_GROUPING_PARAMETER:
+            if unit_filter:
+                endpoint = "/rooms/with_doors/apartment/{}".format(quote(unit_filter, safe=""))
+            else:
+                endpoint = "/rooms/with_doors/"
         else:
-            endpoint = "/rooms/with_doors/"
+            endpoint = "/rooms/with_doors/groupby/{}/{}".format(
+                quote(group_param, safe=""),
+                quote(unit_filter, safe="") if unit_filter else "all")
 
         response = await revit_get(endpoint, ctx)
 
@@ -47,11 +59,12 @@ def register_rooms_with_doors_tools(mcp, revit_get):
         rooms = response.get("rooms", [])
 
         if total == 0:
-            apt_msg = " (filter: {})".format(apartment_filter) if apartment_filter else ""
+            apt_msg = " (filter: {})".format(unit_filter) if unit_filter else ""
             return "Geen ruimtes gevonden{}.".format(apt_msg)
 
         lines = [
             "RUIMTES MET DEUREN — {} ruimtes, {} zonder deur".format(total, without_doors),
+            "Grouping: '{}' ({})".format(group_param, group_label),
             "",
         ]
 
@@ -60,11 +73,11 @@ def register_rooms_with_doors_tools(mcp, revit_get):
         if no_door_rooms:
             lines.append("RUIMTES ZONDER DEUR ({})".format(len(no_door_rooms)))
             for r in no_door_rooms:
-                apt = r.get("appartement_nr") or ""
+                grp = r.get("group") or r.get("appartement_nr") or ""
                 lines.append("  {} | {} | {}".format(
                     r.get("room_name", ""),
                     r.get("room_number", ""),
-                    apt,
+                    grp,
                 ))
             lines.append("")
 
@@ -73,11 +86,11 @@ def register_rooms_with_doors_tools(mcp, revit_get):
         if with_door_rooms:
             lines.append("RUIMTES MET DEUREN ({})".format(len(with_door_rooms)))
             lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {}".format(
-                "Ruimte", "Nr", "Appartement", "Deur type", "Breed.", "Zijde"
+                "Ruimte", "Nr", group_label.capitalize()[:20], "Deur type", "Breed.", "Zijde"
             ))
             lines.append("  " + "-" * 100)
             for r in with_door_rooms:
-                apt = r.get("appartement_nr") or ""
+                grp = r.get("group") or r.get("appartement_nr") or ""
                 room_name = r.get("room_name", "")
                 room_nr = r.get("room_number", "")
                 for door in r.get("doors", []):
@@ -88,11 +101,11 @@ def register_rooms_with_doors_tools(mcp, revit_get):
                     width = "{}mm".format(door.get("width_mm")) if door.get("width_mm") else "—"
                     side = door.get("side", "")
                     lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {}".format(
-                        room_name[:25], room_nr[:8], apt[:20], type_label[:30], width, side
+                        room_name[:25], room_nr[:8], grp[:20], type_label[:30], width, side
                     ))
                     # Clear room name for subsequent doors of same room
                     room_name = ""
                     room_nr = ""
-                    apt = ""
+                    grp = ""
 
         return "\n".join(lines)

@@ -38,7 +38,17 @@ When two filters are needed together, apply the primary one in the route and the
 
 ## Querying the Model
 
-Use discovery-first: call `get_model_structure` before any filtered query to confirm apartment numbers, building segments, and room name spelling. The `apartment_filter` parameter uses prefix matching (e.g. `"1."` matches `1.A` and `1.B` only). See `revit-query/SKILL.md` for the full workflow.
+Use discovery-first: call `get_model_structure` before any filtered query to confirm grouping values, building segments, and room name spelling. Filters use prefix matching (e.g. `"1."` matches `1.A` and `1.B` only). See `revit-query/SKILL.md` for the full workflow.
+
+## Project Profiles, Programs & Rulesets
+
+Drie kennislagen, drie levensduren — alle drie gewone bestanden in de repo:
+
+- `rulesets/` — herbruikbare normen over projecten heen (bv. `codex-wonen` voor sociale woningbouw); uitgevoerd door `compare_rooms_with_checklist`, `check_room_fixtures`, `check_window_area_compliance`.
+- `programs/<project>.json` (+ leesbare `.md`) — programma van eisen per project, bestaat vóór het model; geschreven via `save_project_program`, vergeleken via `compare_model_with_program` / `check_program_relations` / `export_program_comparison` (xlsx → `exports/`).
+- `projects/<modelnaam>.json` — structuurconventies per model (zie `projects/README.md`), geschreven via `save_project_profile`; gekoppeld aan programma en rulesets via `program_link` en `rulesets`.
+
+De `unit_filter` van profile-aware tools filtert op een prefix van de grouping-parameter uit het profiel; zonder profiel geldt de KSS-fallback `BEEL_C_TX_AppartementNummer`. Parameternamen in profielen altijd letterlijk overnemen zoals `discover_room_parameters` ze toont. Brondocumenten (PvE-Excel, lokaalfiches) éénmalig extraheren naar `programs/` — daarna nooit meer herlezen.
 
 ## Universal Element Philosophy
 

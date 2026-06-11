@@ -7,6 +7,9 @@ Routes:
     GET /furnishings/byroom/cat/<categories>           comma-sep aliases, all rooms
     GET /furnishings/byroom/apt/<apt_filter>           all categories, by apartment prefix
     GET /furnishings/byroom/cat/<categories>/apt/<apt> both filters (leanest)
+    GET /furnishings/byroom/groupby/<param>/<prefix>               grouping-parameter
+                                                       uit het project profile ('all' = geen filter)
+    GET /furnishings/byroom/cat/<categories>/groupby/<param>/<prefix>  beide filters
 
 Category aliases (case-insensitive, comma-separated):
     furniture    kasten, bedden, stoelen, tafels
@@ -81,8 +84,14 @@ def _elem_id_int(elem_id):
         return int(elem_id.Value)
 
 
-def _collect_furnishings(doc, cat_str=None, apt_filter=None):
+DEFAULT_GROUPING_PARAMETER = "BEEL_C_TX_AppartementNummer"
+
+
+def _collect_furnishings(doc, cat_str=None, apt_filter=None, group_param=None):
     try:
+        group_param = group_param or DEFAULT_GROUPING_PARAMETER
+        is_default_param = group_param == DEFAULT_GROUPING_PARAMETER
+
         phases = list(DB.FilteredElementCollector(doc).OfClass(DB.Phase))
         last_phase = phases[-1] if phases else None
 
@@ -119,7 +128,7 @@ def _collect_furnishings(doc, cat_str=None, apt_filter=None):
                     if r:
                         apt_nr = None
                         try:
-                            p = r.LookupParameter("BEEL_C_TX_AppartementNummer")
+                            p = r.LookupParameter(group_param)
                             if p and p.HasValue:
                                 apt_nr = safe_string(p.AsString())
                         except Exception:
@@ -152,7 +161,8 @@ def _collect_furnishings(doc, cat_str=None, apt_filter=None):
                             "room_id": room_id,
                             "room_number": rnum,
                             "room_name": rname,
-                            "appartement_nr": apt_nr,
+                            "group": apt_nr,
+                            "appartement_nr": apt_nr if is_default_param else None,
                             "level": level_name,
                             "items": [],
                         }
@@ -185,6 +195,7 @@ def _collect_furnishings(doc, cat_str=None, apt_filter=None):
             "filters": {
                 "categories": ",".join(used_aliases),
                 "apartment": apt_f or "all",
+                "group_parameter": group_param,
             },
             "room_count": len(out),
             "item_count": sum(len(r["items"]) for r in out),
@@ -218,3 +229,15 @@ def register_furnishings_by_room_routes(api):
     def get_furnishings_by_cat_and_apt(doc, categories, apt_filter):
         """Specific categories + apartment filter — leanest query."""
         return _collect_furnishings(doc, cat_str=categories, apt_filter=apt_filter)
+
+    @api.route('/furnishings/byroom/groupby/<group_param>/<group_prefix>', methods=["GET"])
+    def get_furnishings_by_group(doc, group_param, group_prefix):
+        """All categories, gefilterd op prefix van een willekeurige grouping-parameter
+        (project profile). group_prefix 'all' = geen filter."""
+        return _collect_furnishings(doc, apt_filter=group_prefix, group_param=group_param)
+
+    @api.route('/furnishings/byroom/cat/<categories>/groupby/<group_param>/<group_prefix>', methods=["GET"])
+    def get_furnishings_by_cat_and_group(doc, categories, group_param, group_prefix):
+        """Categories + grouping-parameter filter — leanest query op niet-KSS projecten."""
+        return _collect_furnishings(doc, cat_str=categories, apt_filter=group_prefix,
+                                    group_param=group_param)
