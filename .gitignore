@@ -12,3 +12,6 @@ wheels/
 
 # Claude Code settings (machine-specific)
 .claude/settings.local.json
+
+# Local example files
+Programma voorbeeld/
