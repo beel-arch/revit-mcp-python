@@ -1,7 +1,10 @@
 """MCP tool: check required fixtures in bathrooms (and future room types) per BEEL rules."""
 
 import re
+from urllib.parse import quote
 from mcp.server.fastmcp import Context
+
+from .project_profile_tool import get_grouping, DEFAULT_GROUPING_PARAMETER
 
 # ---------------------------------------------------------------------------
 # Rules per room type
@@ -164,7 +167,10 @@ def register_bathroom_checklist_tools(mcp, revit_get):
             return "Onbekend ruimtetype '{}'. Beschikbare types: {}".format(
                 room_type, ", ".join(FIXTURE_RULES.keys()))
 
-        # 1. WO areas -> occupancy per apartment
+        # 1. Profile-aware grouping
+        group_param, _group_label, _profile = await get_grouping(revit_get, ctx)
+
+        # 2. WO areas -> occupancy per apartment
         areas_resp = await revit_get("/areas/WO", ctx)
         if isinstance(areas_resp, str):
             return "Fout bij ophalen WO areas: {}".format(areas_resp)
@@ -180,7 +186,7 @@ def register_bathroom_checklist_tools(mcp, revit_get):
                     "personen": int(m.group(2)),
                 }
 
-        # 2. Rooms -> identify target rooms
+        # 3. Rooms -> identify target rooms
         rooms_resp = await revit_get("/rooms/", ctx)
         if isinstance(rooms_resp, str):
             return "Fout bij ophalen rooms: {}".format(rooms_resp)
@@ -206,7 +212,7 @@ def register_bathroom_checklist_tools(mcp, revit_get):
                     "slaapkamers": occ.get("slaapkamers", 0),
                     "personen": occ.get("personen", 0),
                     "rooms": [],
-                    "fixtures": {},  # room_number -> [lowercased family names]
+                    "fixtures": {},
                 }
             grouped[apt_nr]["rooms"].append(room)
 
@@ -217,12 +223,23 @@ def register_bathroom_checklist_tools(mcp, revit_get):
             msg += "."
             return msg
 
-        # 3. Sanitair via unified furnishings route — lean: filter by category + apartment
-        cat_filter = "plumbing,plumbingeq"
-        if f:
-            plumb_url = "/furnishings/byroom/cat/{}/apt/{}".format(cat_filter, f)
+        # 4. Furnishings — profile-aware URL, URL-safe prefix (strip at first space)
+        #    Room-ID matching handles precise apartment filtering client-side.
+        cat_str = "plumbing,plumbingeq,furniture"
+        url_prefix = f.split(" ")[0] if " " in f else f  # "2.C.Niv" from "2.C.Niv 2.05"
+
+        if group_param == DEFAULT_GROUPING_PARAMETER:
+            if url_prefix:
+                plumb_url = "/furnishings/byroom/cat/{}/apt/{}".format(
+                    cat_str, quote(url_prefix, safe=""))
+            else:
+                plumb_url = "/furnishings/byroom/cat/{}".format(cat_str)
         else:
-            plumb_url = "/furnishings/byroom/cat/{}".format(cat_filter)
+            param_seg = quote(group_param, safe="")
+            prefix_seg = quote(url_prefix, safe="") if url_prefix else "all"
+            plumb_url = "/furnishings/byroom/cat/{}/groupby/{}/{}".format(
+                cat_str, param_seg, prefix_seg)
+
         plumb_resp = await revit_get(plumb_url, ctx)
         if isinstance(plumb_resp, dict) and "rooms" in plumb_resp:
             for room_data in plumb_resp["rooms"]:

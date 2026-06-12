@@ -85,10 +85,10 @@ def register_rooms_with_doors_tools(mcp, revit_get):
         with_door_rooms = [r for r in rooms if r.get("door_count", 0) > 0]
         if with_door_rooms:
             lines.append("RUIMTES MET DEUREN ({})".format(len(with_door_rooms)))
-            lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {}".format(
-                "Ruimte", "Nr", group_label.capitalize()[:20], "Deur type", "Breed.", "Zijde"
+            lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {:<10}  {}".format(
+                "Ruimte", "Nr", group_label.capitalize()[:20], "Deur type", "Breed.", "Zijde", "Deur ID"
             ))
-            lines.append("  " + "-" * 100)
+            lines.append("  " + "-" * 110)
             for r in with_door_rooms:
                 grp = r.get("group") or r.get("appartement_nr") or ""
                 room_name = r.get("room_name", "")
@@ -100,8 +100,9 @@ def register_rooms_with_doors_tools(mcp, revit_get):
                     ).strip()
                     width = "{}mm".format(door.get("width_mm")) if door.get("width_mm") else "—"
                     side = door.get("side", "")
-                    lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {}".format(
-                        room_name[:25], room_nr[:8], grp[:20], type_label[:30], width, side
+                    door_id = door.get("element_id", "")
+                    lines.append("  {:<25} {:<8} {:<20} {:<30} {:>6}  {:<10}  [id:{}]".format(
+                        room_name[:25], room_nr[:8], grp[:20], type_label[:30], width, side, door_id
                     ))
                     # Clear room name for subsequent doors of same room
                     room_name = ""
